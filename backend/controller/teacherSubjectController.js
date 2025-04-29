@@ -1,4 +1,3 @@
-// controller/teacherSubjectController.js
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -11,6 +10,18 @@ export const assignTeacherToSubject = async (req, res) => {
       return res.status(400).json({ message: 'teacherId and subjectId are required' });
     }
 
+    // Prevent duplicate assignment
+    const existing = await prisma.teacherSubject.findFirst({
+      where: {
+        teacherId: Number(teacherId),
+        subjectId: Number(subjectId),
+      },
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: 'Teacher already assigned to this subject' });
+    }
+
     const assigned = await prisma.teacherSubject.create({
       data: {
         teacherId: Number(teacherId),
@@ -20,6 +31,7 @@ export const assignTeacherToSubject = async (req, res) => {
 
     res.status(201).json(assigned);
   } catch (error) {
+    console.error("Error assigning teacher to subject:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -38,6 +50,7 @@ export const getSubjectsOfTeacher = async (req, res) => {
 
     res.status(200).json(subjects);
   } catch (error) {
+    console.error("Error fetching teacher's subjects:", error);
     res.status(500).json({ error: error.message });
   }
 };

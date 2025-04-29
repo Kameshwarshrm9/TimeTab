@@ -7,3 +7,22 @@ router.get("/getsub", getAllSubjects);
 router.post("/create", createSubject);
 
 export default router;
+
+// {
+//     "name": "ML",
+//     "code": "ML1"
+    
+//   }
+
+// {
+//     "name": "Yawar Azad",
+//     "email": "yawar@gmail.com"
+    
+//   }
+
+// {
+//     "name": "CSE",
+//     "semester": "5"
+    
+//   }
+  

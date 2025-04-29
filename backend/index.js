@@ -2,10 +2,15 @@ import express from 'express';
 import colors from 'colors';
 import dotenv from 'dotenv';
 import subjectRoutes from './route/subjectRoutes.js';
-import teacherRoutes from './route/teacherRoutes.js'; // When ready to add
+import teacherRoutes from './route/teacherRoutes.js'; 
 import branchRoutes from './route/branchRoutes.js';
 import branchSubjectRoutes from './route/branchSubjectRoutes.js';
+import branchSubjectTeacherRoutes from './route/branchSubjectTeacher.route.js'; 
 import teacherSubjectRoutes from './route/teacherSubjectRoutes.js';
+import timetableRoutes from "./route/timetable.routes.js";
+import adminRoutes from "./route/ddRoutes.js";
+
+
 
 dotenv.config();
 
@@ -14,10 +19,13 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/subjects', subjectRoutes);
-app.use('/api/teachers', teacherRoutes); // You can comment this until teacherRoutes is created
+app.use('/api/teachers', teacherRoutes); 
 app.use('/api/branches', branchRoutes);
 app.use('/api/branch-subjects', branchSubjectRoutes);
+app.use('/api/branch-teachers', branchSubjectTeacherRoutes); 
 app.use('/api/teacher-subjects', teacherSubjectRoutes);
+app.use("/api", timetableRoutes);
+app.use("/api", adminRoutes);
 
 // Test route
 app.get('/', (req, res) => {
