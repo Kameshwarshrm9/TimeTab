@@ -7,3 +7,5 @@ router.get('/', getAllTeachers);
 router.post('/', createTeacher);
 
 export default router;
+
+
