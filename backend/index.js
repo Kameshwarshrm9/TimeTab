@@ -1,6 +1,7 @@
 import express from 'express';
 import colors from 'colors';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import subjectRoutes from './route/subjectRoutes.js';
 import teacherRoutes from './route/teacherRoutes.js'; 
 import branchRoutes from './route/branchRoutes.js';
@@ -18,11 +19,12 @@ const app = express();
 app.use(express.json());
 
 // API Routes
+app.use(cors());
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/teachers', teacherRoutes); 
 app.use('/api/branches', branchRoutes);
 app.use('/api/branch-subjects', branchSubjectRoutes);
-app.use('/api/branch-teachers', branchSubjectTeacherRoutes); 
+app.use('/api/branch-subject-teachers', branchSubjectTeacherRoutes); 
 app.use('/api/teacher-subjects', teacherSubjectRoutes);
 app.use("/api", timetableRoutes);
 app.use("/api", adminRoutes);
@@ -32,7 +34,7 @@ app.get('/', (req, res) => {
   res.send('API is up and running...');
 });
 
-const PORT = process.env.PORT || 6000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`.bgGreen.black);
 });

@@ -30,12 +30,14 @@ export const generateTimetable = async (req, res) => {
 
     for (const branch of branches) {
       const branchSchedule = {};
+      const subjectDayTracker = {}; // subjectId -> day -> count
 
       weekdays.forEach(day => {
         branchSchedule[day] = {};
         timeSlots.forEach(slot => {
           branchSchedule[day][slot] = null;
         });
+        subjectDayTracker[day] = {};
       });
 
       for (const bs of branch.subjects) {
@@ -68,6 +70,10 @@ export const generateTimetable = async (req, res) => {
 
           if (teacherBusy || branchBusy) continue;
 
+          // Check if subject is already assigned on this day
+          const subjectAssignedToday = subjectDayTracker[day][subject.id] || 0;
+          if (frequency <= 5 && subjectAssignedToday > 0) continue;
+
           if (isMorning) {
             if (teacherMorningTracker[teacherId].has(day)) continue;
             if (teacherMorningTracker[teacherId].size >= 3) continue;
@@ -97,6 +103,8 @@ export const generateTimetable = async (req, res) => {
             teacherSchedule[teacherId][day][slot] = true;
             teacherSchedule[teacherId][day][nextSlot] = true;
 
+            subjectDayTracker[day][subject.id] = (subjectDayTracker[day][subject.id] || 0) + 2;
+
             if (isMorning) teacherMorningTracker[teacherId].add(day);
 
             slotsAssigned += 2;
@@ -118,6 +126,8 @@ export const generateTimetable = async (req, res) => {
 
             branchSchedule[day][slot] = subject.id;
             teacherSchedule[teacherId][day][slot] = true;
+
+            subjectDayTracker[day][subject.id] = (subjectDayTracker[day][subject.id] || 0) + 1;
 
             if (isMorning) teacherMorningTracker[teacherId].add(day);
 
@@ -149,10 +159,6 @@ export const generateTimetable = async (req, res) => {
   }
 };
 
-
-
-
-//to view single timetable
 // GET /api/timetable?branch=CSE&semester=8
 export const getTimetableByBranchAndSem = async (req, res) => {
   try {
@@ -177,9 +183,15 @@ export const getTimetableByBranchAndSem = async (req, res) => {
         subject: true,
         teacher: true,
       },
-      orderBy: {
-        day: 'asc',
-      },
+    });
+
+    // Sort timetable: Monday to Friday, then by timeSlot
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    timetable.sort((a, b) => {
+      const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.timeSlot.localeCompare(b.timeSlot);
     });
 
     res.json({
