@@ -42,3 +42,35 @@ export const getAllAssignments = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+// Get assignments by branch
+// Get assignments by branch & semester
+export const getAssignmentsByBranchAndSemester = async (req, res) => {
+  try {
+    const { branchId, semester } = req.query;
+
+    if (!branchId || !semester) {
+      return res.status(400).json({ error: 'Branch ID and semester are required' });
+    }
+
+    const assignments = await prisma.branchSubjectTeacher.findMany({
+      where: {
+        branch: {
+          is: {
+            id: parseInt(branchId),
+            semester: parseInt(semester),
+          },
+        },
+      },
+      include: {
+        branch: true,
+        subject: true,
+        teacher: true,
+      },
+    });
+
+    res.status(200).json(assignments);
+  } catch (error) {
+    console.error('Error fetching assignments by branch and semester:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
