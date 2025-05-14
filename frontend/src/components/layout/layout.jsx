@@ -1,14 +1,30 @@
-import React from 'react';
+import React, { useContext, useEffect } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import { Outlet } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { AuthContext } from '../../AuthContext.jsx'; // Updated to .jsx
 
 const Layout = () => {
+  const { updateActivity } = useContext(AuthContext);
+
+  // Track user activity to reset session timeout
+  useEffect(() => {
+    const handleActivity = () => updateActivity();
+
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('keypress', handleActivity);
+
+    return () => {
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('keypress', handleActivity);
+    };
+  }, [updateActivity]);
+
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh' }} onClick={updateActivity} onKeyPress={updateActivity}>
       <Sidebar />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <Header />

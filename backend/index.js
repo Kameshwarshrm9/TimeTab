@@ -10,8 +10,7 @@ import branchSubjectTeacherRoutes from './route/branchSubjectTeacher.route.js';
 import teacherSubjectRoutes from './route/teacherSubjectRoutes.js';
 import timetableRoutes from "./route/timetable.routes.js";
 import adminRoutes from "./route/ddRoutes.js";
-
-
+import teacherTimetableRoutes from "./route/teacherTimetable.routes.js"
 
 dotenv.config();
 
@@ -27,6 +26,7 @@ app.use('/api/branch-subjects', branchSubjectRoutes);
 app.use('/api/branch-subject-teachers', branchSubjectTeacherRoutes); 
 app.use('/api/teacher-subjects', teacherSubjectRoutes);
 app.use("/api", timetableRoutes);
+app.use('/api', teacherTimetableRoutes);
 app.use("/api", adminRoutes);
 
 // Test route

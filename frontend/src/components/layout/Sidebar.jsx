@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
+import { AuthContext } from '../../AuthContext.jsx'; // Fixed import path
 
 const Sidebar = () => {
+  const { logout } = useContext(AuthContext);
+
   const navStyle = {
     display: 'flex',
     flexDirection: 'column',
@@ -31,12 +34,27 @@ const Sidebar = () => {
       <NavLink to="/assignments/teacher-subject" style={linkStyle}>Assign Teachers</NavLink>
       <NavLink to="/assignments/branch-subject-assign" style={linkStyle}>Assign Subjects</NavLink>
       <NavLink to="/assignments/branch-subject-view" style={linkStyle}>View Assigned Subjects</NavLink>
-      <NavLink to="/assignments/assign-teacher-to-subject" style={linkStyle}>Assign Teachers to Subject</NavLink> 
-      <NavLink to="/assignments/view" style={linkStyle}>View Assign Teacher Subject</NavLink> {/* Updated link */}
+      <NavLink to="/assignments/assign-teacher-to-subject" style={linkStyle}>Assign Teachers to Subject</NavLink>
+      <NavLink to="/assignments/view" style={linkStyle}>View Assign Teacher Subject</NavLink>
       <NavLink to="/timetable/generate" style={linkStyle}>Generate Timetable</NavLink>
       <NavLink to="/timetable/view" style={linkStyle}>View Timetable</NavLink>
+      <NavLink to="/teacher-timetable" style={linkStyle}>View Teacher Timetable</NavLink>
       <NavLink to="/assign-branch-subject-teacher" style={linkStyle}>Assign Teacher to Branch-Subject</NavLink>
       <NavLink to="/assignments/view-branch-semester-assignments" style={linkStyle}>View Assign Teacher to Branch</NavLink>
+      <button
+        onClick={logout}
+        style={{
+          color: '#fff',
+          textDecoration: 'none',
+          margin: '0.5rem 0',
+          background: 'none',
+          border: 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+        }}
+      >
+        Logout
+      </button>
     </nav>
   );
 };

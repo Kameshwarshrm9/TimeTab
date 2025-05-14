@@ -205,3 +205,90 @@ export const getTimetableByBranchAndSem = async (req, res) => {
     res.status(500).json({ message: 'Error fetching timetable' });
   }
 };
+// GET /api/teacher-timetable/:teacherId
+// GET /api/teacher-timetable/:teacherId
+export const getTeacherTimetable = async (req, res) => {
+  const { teacherId } = req.params;
+  try {
+    console.log('Requested teacherId:', teacherId);
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: Number(teacherId) },
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const timetable = await prisma.timetable.findMany({
+      where: { teacherId: Number(teacherId) },
+      include: {
+        branch: true,
+        subject: true,
+      },
+    });
+
+    timetable.sort((a, b) => {
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.timeSlot.localeCompare(b.timeSlot);
+    });
+
+    res.json({
+      teacherId: teacher.id,
+      teacherName: teacher.name,
+      timetable,
+    });
+  } catch (err) {
+    console.error('Error fetching teacher timetable:', err.message, err.stack);
+    res.status(500).json({ message: 'Error fetching teacher timetable', error: err.message });
+  }
+};
+
+export const getTeacherSchedule = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: Number(teacherId) },
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const timetable = await prisma.timetable.findMany({
+      where: { teacherId: Number(teacherId) },
+      include: {
+        branch: true,
+        subject: true,
+      },
+    });
+
+    // Sort timetable: Monday to Friday, then by timeSlot
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    timetable.sort((a, b) => {
+      const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
+      if (dayDiff !== 0) return dayDiff;
+      return a.timeSlot.localeCompare(b.timeSlot);
+    });
+
+    // Format the response
+    const formattedTimetable = timetable.map(entry => ({
+      day: entry.day,
+      timeSlot: entry.timeSlot,
+      subject: entry.subject.name,
+      branch: entry.branch.name,
+      semester: entry.branch.semester,
+    }));
+
+    res.json({
+      teacherId: teacher.id,
+      teacherName: teacher.name,
+      timetable: formattedTimetable,
+    });
+  } catch (err) {
+    console.error('Error fetching teacher schedule:', err.message, err.stack);
+    res.status(500).json({ message: 'Error fetching teacher schedule', error: err.message });
+  }
+};
