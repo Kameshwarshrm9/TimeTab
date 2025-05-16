@@ -106,7 +106,7 @@ const AssignTeacherToBranchSubject = () => {
               <option value="">-- Select Branch --</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
-                  {branch.name}
+                  {branch.name} - Sem {branch.semester}
                 </option>
               ))}
             </select>

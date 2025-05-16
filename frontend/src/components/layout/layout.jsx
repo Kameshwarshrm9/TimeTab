@@ -1,22 +1,24 @@
-import React, { useContext, useEffect } from 'react';
-import Header from './Header';
-import Sidebar from './Sidebar';
-import Footer from './Footer';
+import React, { useContext, useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { AuthContext } from '../../AuthContext.jsx'; // Updated to .jsx
+import { AuthContext } from '../../AuthContext.jsx';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import Footer from './Footer';
 
 const Layout = () => {
   const { updateActivity } = useContext(AuthContext);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Track user activity to reset session timeout
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   useEffect(() => {
     const handleActivity = () => updateActivity();
-
     window.addEventListener('click', handleActivity);
     window.addEventListener('keypress', handleActivity);
-
     return () => {
       window.removeEventListener('click', handleActivity);
       window.removeEventListener('keypress', handleActivity);
@@ -24,17 +26,15 @@ const Layout = () => {
   }, [updateActivity]);
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }} onClick={updateActivity} onKeyPress={updateActivity}>
-      <Sidebar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Header />
-        <main style={{ flex: 1, padding: '1rem', backgroundColor: '#f5f5f5' }}>
+    <div className="flex min-h-screen bg-gray-100">
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+        <Header toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+        <main className="flex-1 p-6 bg-white">
           <Outlet />
         </main>
         <Footer />
       </div>
-
-      {/* Toast notifications */}
       <ToastContainer
         position="top-right"
         autoClose={3000}
