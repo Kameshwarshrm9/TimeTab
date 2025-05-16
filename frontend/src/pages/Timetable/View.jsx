@@ -1,13 +1,25 @@
 import React, { useState, useRef } from 'react';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import * as htmlToImage from 'html-to-image';
 
 const ViewTimetable = () => {
   const [branch, setBranch] = useState('');
   const [semester, setSemester] = useState('');
-  const [timetable, setTimetable] = useState(null);
+  const [timetable, setTimetable] = useState([]);
   const [error, setError] = useState('');
   const timetableRef = useRef(null);
+
+  const timeSlots = [
+    '09:00 - 10:00',
+    '10:00 - 11:00',
+    '11:00 - 12:00',
+    '12:00 - 01:00',
+    '01:00 - 02:00',
+    '02:00 - 03:00',
+    '03:00 - 04:00',
+  ];
+
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const fetchTimetable = async () => {
     if (!branch || !semester) {
@@ -19,81 +31,79 @@ const ViewTimetable = () => {
       const response = await fetch(`http://localhost:5000/api/${branch}/${semester}`);
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && Array.isArray(data.timetable)) {
         setTimetable(data.timetable);
         setError('');
       } else {
-        setError(data.message);
-        setTimetable(null);
+        setError(data.message || 'Failed to fetch timetable');
+        setTimetable([]);
       }
-    } catch (error) {
-      console.error('Error fetching timetable:', error);
+    } catch (err) {
+      console.error('Error fetching timetable:', err);
       setError('Error fetching timetable');
-      setTimetable(null);
+      setTimetable([]);
     }
   };
 
   const downloadPDF = () => {
-    const element = timetableRef.current;
-    if (!element) return;
+    const input = timetableRef.current;
+    if (!input) {
+      console.error('Timetable reference is not available');
+      return;
+    }
 
-    html2canvas(element, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
+    input.style.display = 'block';
+
+    htmlToImage
+      .toPng(input, { quality: 0.95, pixelRatio: 2 })
+      .then((imgData) => {
+        const pdf = new jsPDF('landscape', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+        const maxHeight = pageHeight - 60;
+        const finalHeight = imgHeight > maxHeight ? maxHeight : imgHeight;
+
+        pdf.setFontSize(16);
+        pdf.text('Government College of Engineering and Technology', pageWidth / 2, 15, { align: 'center' });
+        pdf.setFontSize(12);
+        pdf.text(`Timetable for ${branch} Semester ${semester}`, pageWidth / 2, 25, { align: 'center' });
+
+        pdf.addImage(imgData, 'PNG', 10, 35, imgWidth, finalHeight);
+
+        const teachers = [...new Set(timetable.map((entry) => entry.teacher?.name || ''))].filter(Boolean);
+        let yPosition = 35 + finalHeight + 10;
+        if (yPosition + teachers.length * 7 > pageHeight) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text('Teachers:', 10, yPosition);
+        yPosition += 8;
+        teachers.forEach((teacher) => {
+          pdf.text(`- ${teacher}`, 15, yPosition);
+          yPosition += 7;
+        });
+
+        pdf.save(`timetable_${branch}_sem${semester}.pdf`);
+      })
+      .catch((error) => {
+        console.error('Could not generate PDF:', error);
+        alert('Failed to generate PDF. Please try again.');
       });
-
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Add college name
-      pdf.setFontSize(16);
-      pdf.text('Government College of Engineering and Technology', pageWidth / 2, 15, { align: 'center' });
-      pdf.setFontSize(12);
-      pdf.text(`Timetable for ${branch} Semester ${semester}`, pageWidth / 2, 25, { align: 'center' });
-
-      // Add timetable image
-      pdf.addImage(imgData, 'PNG', 10, 35, imgWidth, imgHeight);
-
-      // Add teachers list
-      const teachers = [...new Set(timetable.map((entry) => entry.teacher.name))];
-      let yPosition = 35 + imgHeight + 10;
-      pdf.setFontSize(12);
-      pdf.text('Teachers:', 10, yPosition);
-      yPosition += 10;
-      teachers.forEach((teacher) => {
-        pdf.text(`- ${teacher}`, 15, yPosition);
-        yPosition += 7;
-      });
-
-      pdf.save(`timetable_${branch}_sem${semester}.pdf`);
-    });
   };
-
-  const timeSlots = [
-    '09:00 - 10:00',
-    '10:00 - 11:00',
-    '11:00 - 12:00',
-    '12:00 - 01:00',
-    '01:00 - 02:00',
-    '02:00 - 03:00',
-    '03:00 - 04:00',
-  ];
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const timetableGrid = days.map((day) => ({
     day,
-    slots: timeSlots.reduce((acc, slot) => ({
-      ...acc,
-      [slot]: slot === '01:00 - 02:00' ? { subject: 'Break', teacher: '' } : null
-    }), {}),
+    slots: timeSlots.reduce((acc, slot) => {
+      acc[slot] = slot === '01:00 - 02:00' ? { subject: 'Break', teacher: '' } : null;
+      return acc;
+    }, {}),
   }));
 
-  if (timetable) {
+  if (Array.isArray(timetable)) {
     timetable.forEach((entry) => {
       const dayIndex = days.indexOf(entry.day);
       if (dayIndex !== -1 && entry.timeSlot !== '01:00 - 02:00') {
@@ -109,7 +119,7 @@ const ViewTimetable = () => {
     <div className="p-4 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">View Timetable</h1>
 
-      <div className="mb-4 flex space-x-4">
+      <div className="mb-4 flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <label htmlFor="branch" className="block text-sm font-medium text-gray-700">Branch</label>
           <select
@@ -143,17 +153,18 @@ const ViewTimetable = () => {
         </div>
       </div>
 
-      <div className="flex space-x-4">
+      <div className="flex flex-col sm:flex-row gap-4 mt-2">
         <button
           onClick={fetchTimetable}
-          className="mt-4 w-full py-2 bg-blue-600 text-white font-semibold rounded-md"
+          className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-md font-semibold"
         >
           View Timetable
         </button>
-        {timetable && (
+
+        {timetable.length > 0 && (
           <button
             onClick={downloadPDF}
-            className="mt-4 w-full py-2 bg-green-600 text-white font-semibold rounded-md"
+            className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-md font-semibold"
           >
             Download PDF
           </button>
@@ -161,20 +172,23 @@ const ViewTimetable = () => {
       </div>
 
       {error && (
-        <div className="mt-4 p-2 text-center text-red-500">
-          {error}
-        </div>
+        <div className="mt-4 text-red-500 text-center font-medium">{error}</div>
       )}
 
-      {timetable && (
+      {timetable.length > 0 && (
         <div className="mt-6 overflow-x-auto" ref={timetableRef}>
-          <h2 className="text-xl font-semibold mb-4">Timetable for {branch} Semester {semester}</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            Timetable for {branch} Semester {semester}
+          </h2>
+
           <table className="min-w-full border-collapse border border-gray-300">
             <thead>
               <tr className="bg-gray-100">
                 <th className="border border-gray-300 px-4 py-2 text-left">Day</th>
                 {timeSlots.map((slot) => (
-                  <th key={slot} className="border border-gray-300 px-4 py-2 text-center">{slot}</th>
+                  <th key={slot} className="border border-gray-300 px-4 py-2 text-center">
+                    {slot}
+                  </th>
                 ))}
               </tr>
             </thead>

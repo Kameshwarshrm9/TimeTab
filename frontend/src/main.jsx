@@ -21,6 +21,8 @@ import ViewTimetable from './pages/Timetable/View.jsx';
 import ViewTeacherTimetable from './pages/Timetable/ViewTeacherTimetable.jsx';
 import Login from './pages/Login.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
+import './index.css';
+import ResetDatabase from './pages/ResetDatabase.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <AuthProvider>
@@ -45,6 +47,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/timetable/generate" element={<GenerateTimetable />} />
             <Route path="/timetable/view" element={<ViewTimetable />} />
             <Route path="/teacher-timetable" element={<ViewTeacherTimetable />} />
+            <Route path="reset-database" element={<ResetDatabase />} />
           </Route>
         </Route>
       </Routes>

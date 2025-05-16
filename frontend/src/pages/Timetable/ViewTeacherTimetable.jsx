@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import * as htmlToImage from 'html-to-image';
 
 const ViewTeacherTimetable = () => {
   const [teachers, setTeachers] = useState([]);
@@ -9,7 +9,6 @@ const ViewTeacherTimetable = () => {
   const [error, setError] = useState('');
   const timetableRef = useRef(null);
 
-  // Fetch list of teachers on component mount
   useEffect(() => {
     const fetchTeachers = async () => {
       try {
@@ -28,7 +27,6 @@ const ViewTeacherTimetable = () => {
     fetchTeachers();
   }, []);
 
-  // Fetch teacher's timetable
   const fetchTimetable = async () => {
     if (!teacherId) {
       alert('Please select a teacher!');
@@ -53,48 +51,56 @@ const ViewTeacherTimetable = () => {
     }
   };
 
-  // Download timetable as PDF
   const downloadPDF = () => {
-    const element = timetableRef.current;
-    if (!element) return;
+    const input = timetableRef.current;
+    if (!input) {
+      console.error('Timetable reference is not available');
+      return;
+    }
 
-    html2canvas(element, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
+    input.style.display = 'block';
+
+    htmlToImage
+      .toPng(input, { quality: 0.95, pixelRatio: 2 })
+      .then((imgData) => {
+        const pdf = new jsPDF('landscape', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgProps = pdf.getImageProperties(imgData);
+        const imgWidth = pageWidth - 20;
+        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+        const maxHeight = pageHeight - 60;
+        const finalHeight = imgHeight > maxHeight ? maxHeight : imgHeight;
+
+        pdf.setFontSize(16);
+        pdf.text('Government College of Engineering and Technology', pageWidth / 2, 15, { align: 'center' });
+        pdf.setFontSize(12);
+        pdf.text(`Timetable for ${timetable.teacherName}`, pageWidth / 2, 25, { align: 'center' });
+
+        pdf.addImage(imgData, 'PNG', 10, 35, imgWidth, finalHeight);
+
+        const subjects = [...new Set(timetable.timetable.map((entry) => entry.subject))].filter(Boolean);
+        let yPosition = 35 + finalHeight + 10;
+        if (yPosition + subjects.length * 7 > pageHeight) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text('Subjects Taught:', 10, yPosition);
+        yPosition += 8;
+        subjects.forEach((subject) => {
+          pdf.text(`- ${subject}`, 15, yPosition);
+          yPosition += 7;
+        });
+
+        pdf.save(`timetable_teacher_${timetable.teacherId}.pdf`);
+      })
+      .catch((error) => {
+        console.error('Could not generate PDF:', error);
+        alert('Failed to generate PDF. Please try again.');
       });
-
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const imgWidth = pageWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Add college name and teacher details
-      pdf.setFontSize(16);
-      pdf.text('Government College of Engineering and Technology', pageWidth / 2, 15, { align: 'center' });
-      pdf.setFontSize(12);
-      pdf.text(`Timetable for ${timetable.teacherName}`, pageWidth / 2, 25, { align: 'center' });
-
-      // Add timetable image
-      pdf.addImage(imgData, 'PNG', 10, 35, imgWidth, imgHeight);
-
-      // Add subjects list
-      const subjects = [...new Set(timetable.timetable.map((entry) => entry.subject))];
-      let yPosition = 35 + imgHeight + 10;
-      pdf.setFontSize(12);
-      pdf.text('Subjects Taught:', 10, yPosition);
-      yPosition += 10;
-      subjects.forEach((subject) => {
-        pdf.text(`- ${subject}`, 15, yPosition);
-        yPosition += 7;
-      });
-
-      pdf.save(`timetable_teacher_${timetable.teacherId}.pdf`);
-    });
   };
 
-  // Define time slots and days
   const timeSlots = [
     '09:00 - 10:00',
     '10:00 - 11:00',
@@ -106,7 +112,6 @@ const ViewTeacherTimetable = () => {
   ];
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-  // Create a grid for timetable data
   const timetableGrid = days.map((day) => ({
     day,
     slots: timeSlots.reduce((acc, slot) => ({
@@ -115,7 +120,6 @@ const ViewTeacherTimetable = () => {
     }), {}),
   }));
 
-  // Populate the grid with timetable data
   if (timetable && timetable.timetable) {
     timetable.timetable.forEach((entry) => {
       const dayIndex = days.indexOf(entry.day);
