@@ -1,4 +1,5 @@
 import React from 'react';
+import adminLogo from '../../assets/admin logo.jpeg'; // Import the admin logo
 
 const Header = ({ toggleSidebar, isSidebarOpen }) => (
   <header className="bg-white p-4 shadow-md sticky top-0 z-10">
@@ -18,8 +19,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => (
       <div className="flex items-center space-x-4">
         <span className="text-gray-600">Admin</span>
         <img
-          src="https://via.placeholder.com/40?text=User"
-          alt="User"
+          src={adminLogo} // Use the imported admin logo
+          alt="Admin Logo"
           className="h-10 w-10 rounded-full"
         />
       </div>
