@@ -61,12 +61,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <NavLink to="/assignments/branch-subject-assign" style={linkStyle}>Assign Subjects</NavLink>
         <NavLink to="/assignments/branch-subject-view" style={linkStyle}>View Assigned Subjects</NavLink>
         <NavLink to="/assignments/assign-teacher-to-subject" style={linkStyle}>Assign Teachers to Subject</NavLink>
-        <NavLink to="/assignments/view" style={linkStyle}>View Assign Teacher Subject</NavLink>
+        <NavLink to="/assignments/view" style={linkStyle}>View Assign Teacher Subject</NavLink>  
+        <NavLink to="/assign-branch-subject-teacher" style={linkStyle}>Assign Teacher to Branch-Subject</NavLink>
+        <NavLink to="/assignments/view-branch-semester-assignments" style={linkStyle}>View Assign Teacher to Branch</NavLink>
         <NavLink to="/timetable/generate" style={linkStyle}>Generate Timetable</NavLink>
         <NavLink to="/timetable/view" style={linkStyle}>View Timetable</NavLink>
         <NavLink to="/teacher-timetable" style={linkStyle}>View Teacher Timetable</NavLink>
-        <NavLink to="/assign-branch-subject-teacher" style={linkStyle}>Assign Teacher to Branch-Subject</NavLink>
-        <NavLink to="/assignments/view-branch-semester-assignments" style={linkStyle}>View Assign Teacher to Branch</NavLink>
         <NavLink to="/reset-database" style={linkStyle}>Backup & Reset Database</NavLink>
         <button
           onClick={logout}

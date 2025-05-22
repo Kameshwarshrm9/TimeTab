@@ -3,7 +3,8 @@ import axios from 'axios';
 
 const ViewBranchSemesterAssignments = () => {
   const [branches, setBranches] = useState([]);
-  const [selectedBranchId, setSelectedBranchId] = useState('');
+  const [uniqueBranchNames, setUniqueBranchNames] = useState([]); // Store unique branch names
+  const [selectedBranchName, setSelectedBranchName] = useState(''); // Store selected branch name
   const [semester, setSemester] = useState('');
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,14 @@ const ViewBranchSemesterAssignments = () => {
     const fetchBranches = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/branches');
-        setBranches(response.data);
+        const branchesData = response.data;
+
+        // Store all branches
+        setBranches(branchesData);
+
+        // Extract unique branch names
+        const uniqueNames = [...new Set(branchesData.map((branch) => branch.name))];
+        setUniqueBranchNames(uniqueNames);
       } catch (err) {
         console.error('Failed to fetch branches', err);
       }
@@ -24,7 +32,7 @@ const ViewBranchSemesterAssignments = () => {
   }, []);
 
   const handleFetch = async () => {
-    if (!selectedBranchId || !semester) {
+    if (!selectedBranchName || !semester) {
       setError('Please select a branch and semester.');
       return;
     }
@@ -32,8 +40,22 @@ const ViewBranchSemesterAssignments = () => {
     try {
       setLoading(true);
       setError('');
+
+      // Find a branchId that matches the selected branch name and semester
+      const selectedBranch = branches.find(
+        (branch) =>
+          branch.name === selectedBranchName && branch.semester === parseInt(semester)
+      );
+
+      if (!selectedBranch) {
+        setError('No branch found for the selected name and semester.');
+        setAssignments([]);
+        setLoading(false);
+        return;
+      }
+
       const response = await axios.get(`http://localhost:5000/api/branch-subject-teachers/by-branch-semester`, {
-        params: { branchId: selectedBranchId, semester }
+        params: { branchId: selectedBranch.id, semester }
       });
       setAssignments(response.data);
     } catch (err) {
@@ -51,14 +73,14 @@ const ViewBranchSemesterAssignments = () => {
       <div className="mb-4">
         <label className="block mb-1">Select Branch:</label>
         <select
-          value={selectedBranchId}
-          onChange={(e) => setSelectedBranchId(e.target.value)}
+          value={selectedBranchName}
+          onChange={(e) => setSelectedBranchName(e.target.value)}
           className="border p-2 w-full rounded"
         >
           <option value="">-- Select Branch --</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {branch.name}
+          {uniqueBranchNames.map((branchName) => (
+            <option key={branchName} value={branchName}>
+              {branchName}
             </option>
           ))}
         </select>

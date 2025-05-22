@@ -84,6 +84,8 @@ export const generateTimetable = async (req, res) => {
 
           // LAB LOGIC
           if (isLab) {
+            // Prevent labs from starting at 12:00 - 01:00, as the next slot is after the break
+            if (slot === "12:00 - 01:00") continue;
             if (!nextSlot) continue;
 
             const nextTeacherBusy = teacherSchedule[teacherId][day]?.[nextSlot];
@@ -205,7 +207,7 @@ export const getTimetableByBranchAndSem = async (req, res) => {
     res.status(500).json({ message: 'Error fetching timetable' });
   }
 };
-// GET /api/teacher-timetable/:teacherId
+
 // GET /api/teacher-timetable/:teacherId
 export const getTeacherTimetable = async (req, res) => {
   const { teacherId } = req.params;
