@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FaTrash } from 'react-icons/fa';
 
 const BranchesList = () => {
   const [branches, setBranches] = useState([]);
@@ -14,6 +15,17 @@ const BranchesList = () => {
       toast.error('Failed to fetch branches');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this branch?')) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/branches/${id}`);
+      setBranches((prev) => prev.filter((branch) => branch.id !== id));
+      toast.success('Branch deleted successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete branch');
     }
   };
 
@@ -42,6 +54,7 @@ const BranchesList = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -49,6 +62,14 @@ const BranchesList = () => {
                 <tr key={branch.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{branch.name}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{branch.semester}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    <button
+                      onClick={() => handleDelete(branch.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <FaTrash />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

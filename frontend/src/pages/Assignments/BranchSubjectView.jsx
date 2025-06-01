@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { FaTrash } from 'react-icons/fa';
 
 const BranchSubjectView = () => {
   const [branches, setBranches] = useState([]);
@@ -37,6 +38,18 @@ const BranchSubjectView = () => {
     }
   }, [selectedBranch]);
 
+  // Handle deletion of a branch-subject assignment
+  const handleDelete = async (branchId, subjectId) => {
+    if (!window.confirm('Are you sure you want to delete this subject assignment?')) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/branch-subjects/${branchId}/${subjectId}`);
+      setAssignedSubjects((prev) => prev.filter((as) => as.subjectId !== subjectId));
+      toast.success('Subject assignment deleted successfully');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete subject assignment');
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white shadow-lg rounded-lg mt-8">
       <h2 className="text-2xl font-bold text-gray-700 mb-6">View Assigned Subjects</h2>
@@ -63,11 +76,19 @@ const BranchSubjectView = () => {
           <ul className="space-y-2">
             {assignedSubjects.map((as) => (
               <li
-                key={as.id}
+                key={`${as.branchId}-${as.subjectId}`}
                 className="flex justify-between items-center p-3 bg-gray-100 rounded-lg shadow-sm"
               >
                 <span className="font-medium text-gray-700">{as.subject.name}</span>
-                <span className="text-gray-500">Frequency: {as.frequency} / week</span>
+                <div className="flex items-center space-x-3">
+                  <span className="text-gray-500">Frequency: {as.frequency} / week</span>
+                  <button
+                    onClick={() => handleDelete(as.branchId, as.subjectId)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

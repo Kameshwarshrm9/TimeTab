@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { FaTrash } from 'react-icons/fa';
 
 const ViewAssignedSubjects = () => {
   const [teachers, setTeachers] = useState([]);
@@ -33,6 +34,27 @@ const ViewAssignedSubjects = () => {
         console.error('Error fetching assigned subjects:', err);
         toast.error('Failed to fetch assigned subjects.');
       });
+  };
+
+  // Handle deletion of a teacher-subject assignment
+  const handleDelete = async (teacherId, subjectId) => {
+    if (!window.confirm('Are you sure you want to delete this subject assignment?')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/teacher-subjects/${teacherId}/${subjectId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setAssignedSubjects((prev) => prev.filter((as) => as.subjectId !== subjectId));
+        toast.success('Subject assignment deleted successfully');
+      } else {
+        toast.error(data.error || 'Failed to delete subject assignment');
+      }
+    } catch (err) {
+      toast.error('An error occurred while deleting the assignment.');
+    }
   };
 
   return (
@@ -70,10 +92,19 @@ const ViewAssignedSubjects = () => {
       {assignedSubjects.length > 0 && (
         <div className="mt-8">
           <h3 className="text-2xl font-semibold text-gray-700 mb-4">Subjects:</h3>
-          <ul className="list-disc pl-6 space-y-2">
+          <ul className="space-y-2">
             {assignedSubjects.map((item) => (
-              <li key={item.id} className="text-lg text-gray-700">
-                {item.subject?.name || 'Unknown Subject'}
+              <li
+                key={`${item.teacherId}-${item.subjectId}`}
+                className="flex justify-between items-center p-3 bg-gray-100 rounded-md text-lg text-gray-700"
+              >
+                <span>{item.subject?.name || 'Unknown Subject'}</span>
+                <button
+                  onClick={() => handleDelete(item.teacherId, item.subjectId)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <FaTrash />
+                </button>
               </li>
             ))}
           </ul>
