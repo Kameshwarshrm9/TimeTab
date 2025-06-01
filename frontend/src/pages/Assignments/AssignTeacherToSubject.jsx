@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import * as XLSX from 'xlsx';
 
 const AssignTeacherToSubject = () => {
   const [teachers, setTeachers] = useState([]);
@@ -8,6 +9,7 @@ const AssignTeacherToSubject = () => {
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     // Fetch teachers
@@ -34,7 +36,7 @@ const AssignTeacherToSubject = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/teacher-subjects', {  // ✅ Corrected URL
+      const res = await fetch('http://localhost:5000/api/teacher-subjects', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,6 +51,8 @@ const AssignTeacherToSubject = () => {
 
       if (res.ok) {
         toast.success('Teacher assigned to subject successfully!');
+        setSelectedTeacher('');
+        setSelectedSubject('');
       } else {
         toast.error(data.message || 'Error assigning teacher to subject');
       }
@@ -56,6 +60,57 @@ const AssignTeacherToSubject = () => {
       toast.error('An error occurred while assigning teacher.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Read and parse the Excel file
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const fileData = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(fileData, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Map Excel columns to assignment fields (case-insensitive)
+        const assignments = jsonData.map((row) => ({
+          teacherName: row.teacherName || row.TeacherName,
+          subjectName: row.subjectName || row.SubjectName,
+        }));
+
+        // Send to backend
+        const res = await fetch('http://localhost:5000/api/teacher-subjects/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(assignments),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          toast.success(data.message);
+        } else {
+          toast.error(data.error || 'Failed to upload assignments');
+        }
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read the Excel file');
+        setIsUploading(false);
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      toast.error('An error occurred while uploading the assignments.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = null; // Reset file input
     }
   };
 
@@ -90,7 +145,7 @@ const AssignTeacherToSubject = () => {
           <select
             id="subject"
             value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
+            onChange={(e) => setSelectedTeacher(e.target.value)}
             className="block w-full p-3 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           >
@@ -117,6 +172,31 @@ const AssignTeacherToSubject = () => {
           </button>
         </div>
       </form>
+
+      {/* Excel File Upload */}
+      <div className="mt-6">
+        <label className="block text-xl text-gray-600 mb-2">Upload Teacher-Subject Assignments via Excel</label>
+        <div className="relative">
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            onChange={handleFileUpload}
+            disabled={isUploading}
+            className="block w-full p-3 border border-gray-300 rounded-md text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
+          />
+          {isUploading && (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+              <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          )}
+        </div>
+        <p className="mt-2 text-sm text-gray-500">
+          Excel file should have columns: teacherName, subjectName
+        </p>
+      </div>
     </div>
   );
 };

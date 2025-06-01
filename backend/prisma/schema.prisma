@@ -1,6 +1,3 @@
- // This is your Prisma schema file
-// Learn more at: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,9 +11,10 @@ model Teacher {
   id                    Int                    @id @default(autoincrement())
   name                  String
   email                 String?                @unique
-  subjects              TeacherSubject[] // many-to-many with subjects
-  timetable             Timetable[] // one-to-many with timetable
-  branchSubjectTeachers BranchSubjectTeacher[] @relation("BranchSubjectTeacher_Teacher")
+  department            String?                // Made optional
+  subjects              TeacherSubject[]       // Removed onDelete: Cascade
+  timetable             Timetable[]            // Removed onDelete: Cascade
+  branchSubjectTeachers BranchSubjectTeacher[] @relation("BranchSubjectTeacher_Teacher") // Removed onDelete: Cascade
 }
 
 model Subject {
@@ -24,26 +22,28 @@ model Subject {
   name                  String
   code                  String                 @unique
   isLab                 Boolean                @default(false)
-  teachers              TeacherSubject[] // many-to-many with teachrs
-  branchSubjects        BranchSubject[] // subjects for braches
-  timetable             Timetable[] // scheduled slots
+  teachers              TeacherSubject[]       // many-to-many with teachers
+  branchSubjects        BranchSubject[]        // subjects for branches
+  timetable             Timetable[]            // scheduled slots
   branchSubjectTeachers BranchSubjectTeacher[] @relation("BranchSubjectTeacher_Subject")
 }
 
 model Branch {
   id                    Int                    @id @default(autoincrement())
-  name                  String // e.g., CSE, EE
-  semester              Int // 1, 2, 3...
-  subjects              BranchSubject[] // subjects assigned to this branch
-  timetable             Timetable[] // timetable for this branch
+  name                  String                 // e.g., CSE, EE
+  semester              Int                    // 1, 2, 3...
+  subjects              BranchSubject[]        // subjects assigned to this branch
+  timetable             Timetable[]            // timetable for this branch
   branchSubjectTeachers BranchSubjectTeacher[] @relation("BranchSubjectTeacher_Branch")
+  
+  @@unique([name, semester]) // Ensure name and semester combination is unique
 }
 
 model TeacherSubject {
   teacherId Int
   subjectId Int
-  teacher   Teacher @relation(fields: [teacherId], references: [id])
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade) // Added onDelete: Cascade
 
   @@id([teacherId, subjectId])
 }
@@ -52,8 +52,8 @@ model BranchSubject {
   branchId  Int
   subjectId Int
   frequency Int
-  branch    Branch  @relation(fields: [branchId], references: [id])
-  subject   Subject @relation(fields: [subjectId], references: [id])
+  branch    Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)  // Added onDelete: Cascade
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade) // Added onDelete: Cascade
 
   @@id([branchId, subjectId])
 }
@@ -64,9 +64,9 @@ model BranchSubjectTeacher {
   subjectId Int
   teacherId Int
 
-  branch  Branch  @relation("BranchSubjectTeacher_Branch", fields: [branchId], references: [id])
-  subject Subject @relation("BranchSubjectTeacher_Subject", fields: [subjectId], references: [id])
-  teacher Teacher @relation("BranchSubjectTeacher_Teacher", fields: [teacherId], references: [id])
+  branch  Branch  @relation("BranchSubjectTeacher_Branch", fields: [branchId], references: [id], onDelete: Cascade)   // Added onDelete: Cascade
+  subject Subject @relation("BranchSubjectTeacher_Subject", fields: [subjectId], references: [id], onDelete: Cascade) // Added onDelete: Cascade
+  teacher Teacher @relation("BranchSubjectTeacher_Teacher", fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([branchId, subjectId])
 }
@@ -79,9 +79,9 @@ model Timetable {
   subjectId Int
   teacherId Int
 
-  branch  Branch  @relation(fields: [branchId], references: [id])
-  subject Subject @relation(fields: [subjectId], references: [id])
-  teacher Teacher @relation(fields: [teacherId], references: [id])
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)   // Added onDelete: Cascade
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade) // Added onDelete: Cascade
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@unique([branchId, day, timeSlot])
   @@unique([teacherId, day, timeSlot])

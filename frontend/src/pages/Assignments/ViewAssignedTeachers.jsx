@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ViewBranchSemesterAssignments = () => {
   const [branches, setBranches] = useState([]);
-  const [uniqueBranchNames, setUniqueBranchNames] = useState([]); // Store unique branch names
-  const [selectedBranchName, setSelectedBranchName] = useState(''); // Store selected branch name
+  const [uniqueBranchNames, setUniqueBranchNames] = useState([]);
+  const [selectedBranchName, setSelectedBranchName] = useState('');
   const [semester, setSemester] = useState('');
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState({}); // Track loading state for each delete button
 
   // Fetch branches on component mount
   useEffect(() => {
@@ -25,6 +28,7 @@ const ViewBranchSemesterAssignments = () => {
         setUniqueBranchNames(uniqueNames);
       } catch (err) {
         console.error('Failed to fetch branches', err);
+        toast.error('Failed to fetch branches');
       }
     };
 
@@ -63,6 +67,42 @@ const ViewBranchSemesterAssignments = () => {
       setError('Failed to fetch data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (assignment) => {
+    // Show confirmation prompt
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the assignment for Teacher: ${assignment.teacher?.name}, Subject: ${assignment.subject?.name}, Branch: ${assignment.branch?.name} (Sem ${assignment.branch?.semester})?`
+    );
+    if (!confirmDelete) return;
+
+    // Extract IDs for the DELETE request
+    const { branchId, subjectId, teacherId } = assignment;
+
+    // Set loading state for this specific assignment
+    setDeleting((prev) => ({ ...prev, [assignment.id]: true }));
+
+    try {
+      const response = await axios.delete(
+        `http://localhost:5000/api/branch-subject-teachers/${branchId}/${subjectId}/${teacherId}`
+      );
+
+      if (response.status === 200) {
+        // Remove the deleted assignment from the state
+        setAssignments((prevAssignments) =>
+          prevAssignments.filter((a) => a.id !== assignment.id)
+        );
+        toast.success('Assignment deleted successfully!');
+      } else {
+        throw new Error('Failed to delete assignment');
+      }
+    } catch (err) {
+      console.error('Error deleting assignment:', err);
+      toast.error(err.response?.data?.error || 'Failed to delete assignment');
+    } finally {
+      // Clear loading state for this assignment
+      setDeleting((prev) => ({ ...prev, [assignment.id]: false }));
     }
   };
 
@@ -117,11 +157,24 @@ const ViewBranchSemesterAssignments = () => {
             <h3 className="text-xl font-semibold mb-3">Assignments:</h3>
             <ul className="space-y-3">
               {assignments.map((assignment) => (
-                <li key={assignment.id} className="border p-3 rounded shadow">
-                  <p><strong>Teacher:</strong> {assignment.teacher?.name || 'N/A'}</p>
-                  <p><strong>Subject:</strong> {assignment.subject?.name || 'N/A'}</p>
-                  <p><strong>Branch:</strong> {assignment.branch?.name || 'N/A'}</p>
-                  <p><strong>Semester:</strong> {assignment.branch?.semester || 'N/A'}</p>
+                <li key={assignment.id} className="border p-3 rounded shadow flex justify-between items-center">
+                  <div>
+                    <p><strong>Teacher:</strong> {assignment.teacher?.name || 'N/A'}</p>
+                    <p><strong>Subject:</strong> {assignment.subject?.name || 'N/A'}</p>
+                    <p><strong>Branch:</strong> {assignment.branch?.name || 'N/A'}</p>
+                    <p><strong>Semester:</strong> {assignment.branch?.semester || 'N/A'}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(assignment)}
+                    disabled={deleting[assignment.id]}
+                    className={`ml-4 px-3 py-1 text-white font-semibold rounded-lg transition-colors ${
+                      deleting[assignment.id]
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-red-500 hover:bg-red-600'
+                    }`}
+                  >
+                    {deleting[assignment.id] ? 'Deleting...' : 'Delete'}
+                  </button>
                 </li>
               ))}
             </ul>
