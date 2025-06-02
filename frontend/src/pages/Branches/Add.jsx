@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { FaUniversity, FaPlus, FaUpload } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
@@ -15,19 +16,40 @@ const AddBranch = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !semester) {
-      toast.error('Both fields are required');
+      toast.error('Both fields are required', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
     
     setIsSubmitting(true);
     try {
       await axios.post('http://localhost:5000/api/branches', { name, semester });
-      toast.success('Branch added successfully!');
+      toast.success('Branch added successfully!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setName('');
       setSemester('');
       navigate('/branches'); // Navigate to the branches list page
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add branch');
+      toast.error(err.response?.data?.message || 'Failed to add branch', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -42,31 +64,68 @@ const AddBranch = () => {
       // Read and parse the Excel file
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to branch fields (case-insensitive)
-        const branches = jsonData.map((row) => ({
-          name: row.Name || row.name,
-          semester: row.Semester || row.semester,
-        }));
+          // Map Excel columns to branch fields (case-insensitive)
+          const branches = jsonData.map((row) => ({
+            name: row.Name || row.name,
+            semester: row.Semester || row.semester,
+          }));
 
-        // Send to backend
-        const response = await axios.post('http://localhost:5000/api/branches/bulk', branches);
-        toast.success(response.data.message);
-        navigate('/branches'); // Navigate to the branches list page
+          // Send to backend
+          const response = await axios.post('http://localhost:5000/api/branches/bulk', branches);
+          toast.success(response.data.message, {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+          navigate('/branches'); // Navigate to the branches list page
+        } catch (err) {
+          console.error(err);
+          toast.error(err.response?.data?.error || 'Failed to upload branches', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } finally {
+          setIsUploading(false);
+          e.target.value = null; // Reset file input
+        }
       };
       reader.onerror = () => {
-        toast.error('Failed to read the Excel file');
+        toast.error('Failed to read the Excel file', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setIsUploading(false);
+        e.target.value = null; // Reset file input
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to upload branches');
-    } finally {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to upload branches', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setIsUploading(false);
       e.target.value = null; // Reset file input
     }
@@ -149,6 +208,7 @@ const AddBranch = () => {
           Excel file should have columns: Name, Semester
         </p>
       </div>
+      <ToastContainer />
     </div>
   );
 };

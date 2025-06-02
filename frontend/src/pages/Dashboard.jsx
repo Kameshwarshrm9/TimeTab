@@ -131,8 +131,9 @@ const Dashboard = () => {
             ['Subjects Template', handleDownloadSubjectsTemplate],
             ['Branches Template', handleDownloadBranchesTemplate],
             ['Branch-Subject Template', handleDownloadBranchSubjectTemplate],
-            ['Branch-Subject-Teacher Template', handleDownloadBranchSubjectTeacherTemplate],
             ['Teacher-Subject Template', handleDownloadTeacherSubjectTemplate],
+            ['Branch-Subject-Teacher Template', handleDownloadBranchSubjectTeacherTemplate],
+            
           ].map(([label, handler]) => (
             <button
               key={label}

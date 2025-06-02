@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import * as XLSX from 'xlsx';
 import { FaUpload } from 'react-icons/fa';
 
@@ -11,12 +11,18 @@ const AddSubject = () => {
   const [isLab, setIsLab] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name || !code) {
-      toast.error('Please fill in all fields');
+      toast.error('Please fill in all fields', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -27,13 +33,26 @@ const AddSubject = () => {
         code,
         isLab,
       });
-      toast.success('Subject added successfully');
+      toast.success('Subject added successfully', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setName('');
       setCode('');
       setIsLab(false);
-      navigate('/subjects'); // Navigate to the subjects list page
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to add subject');
+      toast.error(err.response?.data?.error || 'Failed to add subject', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -48,32 +67,68 @@ const AddSubject = () => {
       // Read and parse the Excel file
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to subject fields (case-insensitive)
-        const subjects = jsonData.map((row) => ({
-          name: row.Name || row.name,
-          code: row.Code || row.code,
-          isLab: row.IsLab ?? row.isLab ?? false, // Handle both IsLab and isLab, default to false
-        }));
+          // Map Excel columns to subject fields (case-insensitive)
+          const subjects = jsonData.map((row) => ({
+            name: row.Name || row.name,
+            code: row.Code || row.code,
+            isLab: row.IsLab ?? row.isLab ?? false, // Handle both IsLab and isLab, default to false
+          }));
 
-        // Send to backend
-        const response = await axios.post('http://localhost:5000/api/subjects/bulk', subjects);
-        toast.success(response.data.message);
-        navigate('/subjects'); // Navigate to the subjects list page
+          // Send to backend
+          const response = await axios.post('http://localhost:5000/api/subjects/bulk', subjects);
+          toast.success(response.data.message, {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } catch (err) {
+          console.error(err);
+          toast.error(err.response?.data?.error || 'Failed to upload subjects', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } finally {
+          setIsUploading(false);
+          e.target.value = null; // Reset file input
+        }
       };
       reader.onerror = () => {
-        toast.error('Failed to read the Excel file');
+        toast.error('Failed to read the Excel file', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setIsUploading(false);
+        e.target.value = null; // Reset file input
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to upload subjects');
-    } finally {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to upload subjects', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setIsUploading(false);
       e.target.value = null; // Reset file input
     }
@@ -153,6 +208,7 @@ const AddSubject = () => {
           Excel file should have columns: Name, Code, IsLab (true/false)
         </p>
       </div>
+      <ToastContainer />
     </div>
   );
 };

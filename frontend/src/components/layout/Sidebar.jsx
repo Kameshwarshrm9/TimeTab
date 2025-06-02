@@ -58,12 +58,12 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         <NavLink to="/subjects/add" style={linkStyle}>Add Subject</NavLink>
         <NavLink to="/branches" style={linkStyle}>Branches</NavLink>
         <NavLink to="/branches/add" style={linkStyle}>Add Branch</NavLink>
-        <NavLink to="/assignments/branch-subject-assign" style={linkStyle}>Assign Subjects</NavLink>
-        <NavLink to="/assignments/branch-subject-view" style={linkStyle}>View Assigned Subjects</NavLink>
-        <NavLink to="/assignments/assign-teacher-to-subject" style={linkStyle}>Assign Teachers to Subject</NavLink>
+        <NavLink to="/assignments/branch-subject-assign" style={linkStyle}>Assign Branch Subjects</NavLink>
+        <NavLink to="/assignments/branch-subject-view" style={linkStyle}>View Assigned Branch Subjects</NavLink>
+        <NavLink to="/assignments/assign-teacher-to-subject" style={linkStyle}>Assign Teachers Subject</NavLink>
         <NavLink to="/assignments/view" style={linkStyle}>View Assign Teacher Subject</NavLink>  
         <NavLink to="/assign-branch-subject-teacher" style={linkStyle}>Assign Teacher to Branch-Subject</NavLink>
-        <NavLink to="/assignments/view-branch-semester-assignments" style={linkStyle}>View Assign Teacher to Branch</NavLink>
+        <NavLink to="/assignments/view-branch-semester-assignments" style={linkStyle}>View Assign Teacher to Branch-Subject</NavLink>
         <NavLink to="/timetable/generate" style={linkStyle}>Generate Timetable</NavLink>
         <NavLink to="/timetable/view" style={linkStyle}>View Timetable</NavLink>
         <NavLink to="/teacher-timetable" style={linkStyle}>View Teacher Timetable</NavLink>

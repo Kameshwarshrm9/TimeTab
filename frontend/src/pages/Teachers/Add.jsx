@@ -3,31 +3,43 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { FaUserPlus, FaCheckCircle, FaUpload } from 'react-icons/fa';
 import { FiAlertCircle } from 'react-icons/fi';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AddTeacher = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [department, setDepartment] = useState('');
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSuccess('');
-    setError('');
     setIsSubmitting(true);
 
     try {
       await axios.post('http://localhost:5000/api/teachers', { name, email, department });
-      setSuccess('Teacher added successfully!');
+      toast.success('Teacher added successfully!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setName('');
       setEmail('');
       setDepartment('');
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'Failed to add teacher');
+      toast.error(err.response?.data?.error || 'Failed to add teacher', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -37,40 +49,74 @@ const AddTeacher = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setSuccess('');
-    setError('');
     setIsUploading(true);
 
     try {
       // Read and parse the Excel file
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to teacher fields (case-insensitive)
-        const teachers = jsonData.map((row) => ({
-          name: row.Name || row.name,
-          email: row.Email || row.email,
-          department: row.Department || row.department,
-        }));
+          // Map Excel columns to teacher fields (case-insensitive)
+          const teachers = jsonData.map((row) => ({
+            name: row.Name || row.name,
+            email: row.Email || row.email,
+            department: row.Department || row.department,
+          }));
 
-        // Send to backend
-        const response = await axios.post('http://localhost:5000/api/teachers/bulk', teachers);
-        setSuccess(response.data.message);
+          // Send to backend
+          const response = await axios.post('http://localhost:5000/api/teachers/bulk', teachers);
+          toast.success(response.data.message, {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } catch (err) {
+          console.error(err);
+          toast.error(err.response?.data?.error || 'Failed to upload teachers', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } finally {
+          setIsUploading(false);
+          e.target.value = null; // Reset file input
+        }
       };
       reader.onerror = () => {
-        setError('Failed to read the Excel file');
+        toast.error('Failed to read the Excel file', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setIsUploading(false);
+        e.target.value = null; // Reset file input
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'Failed to upload teachers');
-    } finally {
+      toast.error(err.response?.data?.error || 'Failed to upload teachers', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setIsUploading(false);
       e.target.value = null; // Reset file input
     }
@@ -88,24 +134,6 @@ const AddTeacher = () => {
         </div>
 
         <div className="p-6">
-          {success && (
-            <div className="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
-              <div className="flex items-center">
-                <FaCheckCircle className="text-green-500 mr-2" />
-                <span className="text-green-700">{success}</span>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
-              <div className="flex items-center">
-                <FiAlertCircle className="text-red-500 mr-2" />
-                <span className="text-red-700">{error}</span>
-              </div>
-            </div>
-          )}
-
           {/* Manual Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -195,6 +223,7 @@ const AddTeacher = () => {
           </div>
         </div>
       </div>
+      <ToastContainer />
     </div>
   );
 };
