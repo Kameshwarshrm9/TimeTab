@@ -6,10 +6,26 @@ export const assignSubjectToBranch = async (req, res) => {
   try {
     const { branchId, subjectId, frequency } = req.body;
 
+    // Validate inputs
     if (!branchId || !subjectId || frequency == null) {
-      return res.status(400).json({ message: 'branchId, subjectId, and frequency are required' });
+      return res.status(400).json({ error: "branchId, subjectId, and frequency are required" });
     }
 
+    // Check if the assignment already exists
+    const existingAssignment = await prisma.branchSubject.findFirst({
+      where: {
+        branchId: Number(branchId),
+        subjectId: Number(subjectId),
+      },
+    });
+
+    if (existingAssignment) {
+      return res.status(400).json({
+        error: `Branch (ID: ${branchId}) is already assigned to Subject (ID: ${subjectId})`,
+      });
+    }
+
+    // Create the assignment
     const assignment = await prisma.branchSubject.create({
       data: {
         branchId: Number(branchId),
@@ -21,6 +37,11 @@ export const assignSubjectToBranch = async (req, res) => {
     res.status(201).json(assignment);
   } catch (error) {
     console.error('Error assigning subject to branch:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({
+        error: `Branch (ID: ${req.body.branchId}) is already assigned to Subject (ID: ${req.body.subjectId})`,
+      });
+    }
     res.status(500).json({ error: "Failed to assign subject to branch" });
   }
 };
@@ -34,7 +55,7 @@ export const bulkAssignSubjectsToBranches = async (req, res) => {
       return res.status(400).json({ error: "Expected a non-empty array of assignments" });
     }
 
-    // Validate each assignment
+    // Validate each assignment and map to branchId and subjectId
     const validatedAssignments = [];
     for (const [index, assignment] of assignments.entries()) {
       const { branchName, semester, subjectName, frequency } = assignment;
@@ -68,12 +89,12 @@ export const bulkAssignSubjectsToBranches = async (req, res) => {
       });
     }
 
-    // Check for duplicates (branchId and subjectId combination should be unique)
+    // Check for duplicates within the input array
     const assignmentKeys = validatedAssignments.map((a) => `${a.branchId}-${a.subjectId}`);
     const duplicateKeys = assignmentKeys.filter((key, index) => assignmentKeys.indexOf(key) !== index);
     if (duplicateKeys.length > 0) {
       return res.status(400).json({
-        error: `Duplicate assignments found in input: ${duplicateKeys.join(', ')}`,
+        error: `Duplicate branch-subject assignments found in input: ${duplicateKeys.join(', ')}`,
       });
     }
 
@@ -91,7 +112,7 @@ export const bulkAssignSubjectsToBranches = async (req, res) => {
     const duplicates = assignmentKeys.filter((key) => existingKeys.includes(key));
     if (duplicates.length > 0) {
       return res.status(400).json({
-        error: `Assignments already exist in database: ${duplicates.join(', ')}`,
+        error: `Branch-subject assignments already exist in database: ${duplicates.join(', ')}`,
       });
     }
 
@@ -110,6 +131,11 @@ export const bulkAssignSubjectsToBranches = async (req, res) => {
     });
   } catch (err) {
     console.error('Error bulk assigning subjects to branches:', err);
+    if (err.code === 'P2002') {
+      return res.status(400).json({
+        error: 'One or more branch-subject assignments already exist',
+      });
+    }
     res.status(400).json({ error: err.message || "Failed to bulk assign subjects to branches" });
   }
 };

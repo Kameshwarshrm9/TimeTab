@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 
 const ListSubjects = () => {
   const [subjects, setSubjects] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(''); // New state for search query
   const [editingSubjectId, setEditingSubjectId] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', code: '', isLab: false });
 
@@ -21,6 +22,11 @@ const ListSubjects = () => {
   useEffect(() => {
     fetchSubjects();
   }, []);
+
+  // Filter subjects based on search query
+  const filteredSubjects = subjects.filter((subject) =>
+    subject.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleEditClick = (subject) => {
     setEditingSubjectId(subject.id);
@@ -74,15 +80,26 @@ const ListSubjects = () => {
 
   return (
     <div className="max-w-4xl mx-auto mt-10">
-      <h2 className="text-2xl font-semibold mb-6 flex items-center">
-        <FaBook className="mr-2 text-blue-500" />
-        All Subjects
-      </h2>
-      {subjects.length === 0 ? (
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold flex items-center">
+          <FaBook className="mr-2 text-blue-500" />
+          All Subjects
+        </h2>
+        <div className="relative">
+          <input
+            type="text"
+            className="w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+            placeholder="Search subjects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+      {filteredSubjects.length === 0 ? (
         <p className="text-gray-600">No subjects found.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {subjects.map((subject) => (
+          {filteredSubjects.map((subject) => (
             <div
               key={subject.id}
               className="bg-white shadow-md rounded-lg p-4 hover:shadow-lg transition"

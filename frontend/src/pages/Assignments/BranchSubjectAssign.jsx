@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import * as XLSX from 'xlsx';
 
 const BranchSubjectAssign = () => {
@@ -18,7 +19,14 @@ const BranchSubjectAssign = () => {
         const res = await axios.get('http://localhost:5000/api/branches');
         setBranches(res.data);
       } catch (err) {
-        toast.error('Failed to fetch branches');
+        toast.error('Failed to fetch branches', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     };
 
@@ -27,7 +35,14 @@ const BranchSubjectAssign = () => {
         const res = await axios.get('http://localhost:5000/api/subjects/getsub');
         setSubjects(res.data);
       } catch (err) {
-        toast.error('Failed to fetch subjects');
+        toast.error('Failed to fetch subjects', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     };
 
@@ -38,7 +53,14 @@ const BranchSubjectAssign = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedBranch || !selectedSubject || frequency === '') {
-      toast.error('All fields are required');
+      toast.error('All fields are required', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
     try {
@@ -47,12 +69,26 @@ const BranchSubjectAssign = () => {
         subjectId: selectedSubject,
         frequency,
       });
-      toast.success('Subject assigned successfully!');
+      toast.success('Subject assigned successfully!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setSelectedBranch('');
       setSelectedSubject('');
       setFrequency('');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to assign subject');
+      toast.error(err.response?.data?.message || 'Failed to assign subject', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
@@ -65,32 +101,69 @@ const BranchSubjectAssign = () => {
       // Read and parse the Excel file
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to assignment fields (case-insensitive)
-        const assignments = jsonData.map((row) => ({
-          branchName: row.branchName || row.BranchName,
-          semester: row.semester || row.Semester,
-          subjectName: row.subjectName || row.SubjectName,
-          frequency: row.frequency || row.Frequency,
-        }));
+          // Map Excel columns to assignment fields (case-insensitive)
+          const assignments = jsonData.map((row) => ({
+            branchName: row.branchName || row.BranchName,
+            semester: row.semester || row.Semester,
+            subjectName: row.subjectName || row.SubjectName,
+            frequency: row.frequency || row.Frequency,
+          }));
 
-        // Send to backend
-        const response = await axios.post('http://localhost:5000/api/branch-subjects/bulk', assignments);
-        toast.success(response.data.message);
+          // Send to backend
+          const response = await axios.post('http://localhost:5000/api/branch-subjects/bulk', assignments);
+          toast.success(response.data.message, {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } catch (err) {
+          console.error(err);
+          toast.error(err.response?.data?.error || 'Failed to upload assignments', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } finally {
+          setIsUploading(false);
+          e.target.value = null; // Reset file input
+        }
       };
       reader.onerror = () => {
-        toast.error('Failed to read the Excel file');
+        toast.error('Failed to read the Excel file', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setIsUploading(false);
+        e.target.value = null; // Reset file input
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to upload assignments');
-    } finally {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to upload assignments', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setIsUploading(false);
       e.target.value = null; // Reset file input
     }
@@ -174,6 +247,7 @@ const BranchSubjectAssign = () => {
           Excel file should have columns: branchName, semester, subjectName, frequency
         </p>
       </div>
+      <ToastContainer />
     </div>
   );
 };

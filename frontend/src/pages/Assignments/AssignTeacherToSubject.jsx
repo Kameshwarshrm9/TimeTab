@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import * as XLSX from 'xlsx';
 
@@ -19,7 +19,17 @@ const AssignTeacherToSubject = () => {
         console.log('Teachers:', data);
         setTeachers(data);
       })
-      .catch((err) => console.error('Error fetching teachers:', err));
+      .catch((err) => {
+        console.error('Error fetching teachers:', err);
+        toast.error('Failed to fetch teachers', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      });
 
     // Fetch subjects
     fetch('http://localhost:5000/api/subjects/getsub')
@@ -28,7 +38,17 @@ const AssignTeacherToSubject = () => {
         console.log('Subjects:', data);
         setSubjects(data);
       })
-      .catch((err) => console.error('Error fetching subjects:', err));
+      .catch((err) => {
+        console.error('Error fetching subjects:', err);
+        toast.error('Failed to fetch subjects', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -50,14 +70,35 @@ const AssignTeacherToSubject = () => {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success('Teacher assigned to subject successfully!');
+        toast.success('Teacher assigned to subject successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setSelectedTeacher('');
         setSelectedSubject('');
       } else {
-        toast.error(data.message || 'Error assigning teacher to subject');
+        toast.error(data.message || 'Error assigning teacher to subject', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     } catch (err) {
-      toast.error('An error occurred while assigning teacher.');
+      toast.error('An error occurred while assigning teacher.', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -72,43 +113,87 @@ const AssignTeacherToSubject = () => {
       // Read and parse the Excel file
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const fileData = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(fileData, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        try {
+          const fileData = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(fileData, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to assignment fields (case-insensitive)
-        const assignments = jsonData.map((row) => ({
-          teacherName: row.teacherName || row.TeacherName,
-          subjectName: row.subjectName || row.SubjectName,
-        }));
+          // Map Excel columns to assignment fields (case-insensitive)
+          const assignments = jsonData.map((row) => ({
+            teacherName: row.teacherName || row.TeacherName,
+            subjectName: row.subjectName || row.SubjectName,
+          }));
 
-        // Send to backend
-        const res = await fetch('http://localhost:5000/api/teacher-subjects/bulk', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(assignments),
-        });
+          // Send to backend
+          const res = await fetch('http://localhost:5000/api/teacher-subjects/bulk', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(assignments),
+          });
 
-        const data = await res.json();
+          const data = await res.json();
 
-        if (res.ok) {
-          toast.success(data.message);
-        } else {
-          toast.error(data.error || 'Failed to upload assignments');
+          if (res.ok) {
+            toast.success(data.message, {
+              position: "top-right",
+              autoClose: 3000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
+          } else {
+            toast.error(data.error || 'Failed to upload assignments', {
+              position: "top-right",
+              autoClose: 3000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error(err.message || 'Failed to upload assignments', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } finally {
+          setIsUploading(false);
+          e.target.value = null; // Reset file input
         }
       };
       reader.onerror = () => {
-        toast.error('Failed to read the Excel file');
+        toast.error('Failed to read the Excel file', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setIsUploading(false);
+        e.target.value = null; // Reset file input
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      toast.error('An error occurred while uploading the assignments.');
-    } finally {
+      console.error(err);
+      toast.error('An error occurred while uploading the assignments.', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setIsUploading(false);
       e.target.value = null; // Reset file input
     }
@@ -145,7 +230,7 @@ const AssignTeacherToSubject = () => {
           <select
             id="subject"
             value={selectedSubject}
-            onChange={(e) => setSelectedTeacher(e.target.value)}
+            onChange={(e) => setSelectedSubject(e.target.value)} // Fixed bug: setSelectedTeacher was used instead of setSelectedSubject
             className="block w-full p-3 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           >
@@ -197,6 +282,7 @@ const AssignTeacherToSubject = () => {
           Excel file should have columns: teacherName, subjectName
         </p>
       </div>
+      <ToastContainer />
     </div>
   );
 };

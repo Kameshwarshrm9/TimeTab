@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const GenerateTimetable = () => {
-  const [status, setStatus] = useState('');
   const [branch, setBranch] = useState('');
   const [semester, setSemester] = useState('');
 
   const handleGenerate = async () => {
     if (!branch || !semester) {
-      alert("Please select branch and semester!");
+      toast.error('Please select branch and semester!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -23,13 +31,34 @@ const GenerateTimetable = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setStatus('Timetable generated successfully!');
+        toast.success('Timetable generated successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       } else {
-        setStatus(`Error: ${data.message}`);
+        toast.error(data.message || 'Error generating timetable', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     } catch (error) {
       console.error('Error generating timetable:', error);
-      setStatus('Error generating timetable');
+      toast.error('Error generating timetable', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   };
 
@@ -75,11 +104,7 @@ const GenerateTimetable = () => {
         Generate Timetable
       </button>
 
-      {status && (
-        <div className={`mt-4 p-2 text-center ${status.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>
-          {status}
-        </div>
-      )}
+      <ToastContainer />
     </div>
   );
 };

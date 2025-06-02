@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import * as XLSX from 'xlsx';
 
 const AssignTeacherToBranchSubject = () => {
@@ -23,6 +24,10 @@ const AssignTeacherToBranchSubject = () => {
           fetch('http://localhost:5000/api/teachers'),
         ]);
 
+        if (!branchesRes.ok) throw new Error('Failed to fetch branches');
+        if (!subjectsRes.ok) throw new Error('Failed to fetch subjects');
+        if (!teachersRes.ok) throw new Error('Failed to fetch teachers');
+
         const branchesData = await branchesRes.json();
         const subjectsData = await subjectsRes.json();
         const teachersData = await teachersRes.json();
@@ -33,7 +38,14 @@ const AssignTeacherToBranchSubject = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data');
+        toast.error(error.message || 'Failed to fetch data', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setLoading(false);
       }
     };
@@ -45,7 +57,14 @@ const AssignTeacherToBranchSubject = () => {
     e.preventDefault();
 
     if (!branchId || !subjectId || !teacherId) {
-      toast.error('Please select all fields');
+      toast.error('Please select all fields', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -55,7 +74,14 @@ const AssignTeacherToBranchSubject = () => {
       isNaN(parseInt(subjectId)) ||
       isNaN(parseInt(teacherId))
     ) {
-      toast.error('Invalid selection.');
+      toast.error('Invalid selection.', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
@@ -75,17 +101,38 @@ const AssignTeacherToBranchSubject = () => {
       });
 
       if (res.ok) {
-        toast.success('Teacher successfully assigned!');
+        toast.success('Teacher successfully assigned!', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setBranchId('');
         setSubjectId('');
         setTeacherId('');
       } else {
         const errorData = await res.json();
-        toast.error(errorData.error || 'Assignment failed');
+        toast.error(errorData.error || 'Assignment failed', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
       }
     } catch (error) {
       console.error('Error submitting:', error);
-      toast.error('Server error');
+      toast.error('Server error', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -101,88 +148,132 @@ const AssignTeacherToBranchSubject = () => {
       // Read and parse the Excel file
       const reader = new FileReader();
       reader.onload = async (event) => {
-        const fileData = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(fileData, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        try {
+          const fileData = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(fileData, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-        // Map Excel columns to assignment fields (case-insensitive)
-        const assignments = jsonData.map((row, index) => {
-          const branchName = row.branchName || row.BranchName;
-          const semester = row.semester || row.Semester;
-          const teacherName = row.teacherName || row.TeacherName;
-          const subjectName = row.subjectName || row.SubjectName;
+          // Map Excel columns to assignment fields (case-insensitive)
+          const assignments = jsonData.map((row, index) => {
+            const branchName = row.branchName || row.BranchName;
+            const semester = row.semester || row.Semester;
+            const teacherName = row.teacherName || row.TeacherName;
+            const subjectName = row.subjectName || row.SubjectName;
 
-          if (!branchName || !semester || !teacherName || !subjectName) {
-            throw new Error(`Assignment at index ${index} is missing required field: branchName, semester, teacherName, or subjectName`);
-          }
+            if (!branchName || !semester || !teacherName || !subjectName) {
+              throw new Error(`Assignment at index ${index} is missing required field: branchName, semester, teacherName, or subjectName`);
+            }
 
-          return {
-            branchName,
-            semester: Number(semester),
-            teacherName,
-            subjectName,
-          };
-        });
-
-        // Map names to IDs
-        const mappedAssignments = [];
-        for (const assignment of assignments) {
-          // Find branchId
-          const branch = branches.find(
-            (b) => b.name === assignment.branchName && b.semester === assignment.semester
-          );
-          if (!branch) {
-            throw new Error(`Branch '${assignment.branchName}' (Semester ${assignment.semester}) not found at index ${assignments.indexOf(assignment)}`);
-          }
-
-          // Find subjectId
-          const subject = subjects.find((s) => s.name === assignment.subjectName);
-          if (!subject) {
-            throw new Error(`Subject '${assignment.subjectName}' not found at index ${assignments.indexOf(assignment)}`);
-          }
-
-          // Find teacherId
-          const teacher = teachers.find((t) => t.name === assignment.teacherName);
-          if (!teacher) {
-            throw new Error(`Teacher '${assignment.teacherName}' not found at index ${assignments.indexOf(assignment)}`);
-          }
-
-          mappedAssignments.push({
-            branchId: branch.id,
-            subjectId: subject.id,
-            teacherId: teacher.id,
+            return {
+              branchName,
+              semester: Number(semester),
+              teacherName,
+              subjectName,
+            };
           });
-        }
 
-        // Send to backend
-        const res = await fetch('http://localhost:5000/api/branch-subject-teachers/bulk', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(mappedAssignments),
-        });
+          // Map names to IDs
+          const mappedAssignments = [];
+          for (const assignment of assignments) {
+            // Find branchId
+            const branch = branches.find(
+              (b) => b.name === assignment.branchName && b.semester === assignment.semester
+            );
+            if (!branch) {
+              throw new Error(`Branch '${assignment.branchName}' (Semester ${assignment.semester}) not found at index ${assignments.indexOf(assignment)}`);
+            }
 
-        const data = await res.json();
+            // Find subjectId
+            const subject = subjects.find((s) => s.name === assignment.subjectName);
+            if (!subject) {
+              throw new Error(`Subject '${assignment.subjectName}' not found at index ${assignments.indexOf(assignment)}`);
+            }
 
-        if (res.ok) {
-          toast.success(data.message || `Successfully created ${mappedAssignments.length} assignments`);
-        } else {
-          toast.error(data.error || 'Failed to upload assignments');
+            // Find teacherId
+            const teacher = teachers.find((t) => t.name === assignment.teacherName);
+            if (!teacher) {
+              throw new Error(`Teacher '${assignment.teacherName}' not found at index ${assignments.indexOf(assignment)}`);
+            }
+
+            mappedAssignments.push({
+              branchId: branch.id,
+              subjectId: subject.id,
+              teacherId: teacher.id,
+            });
+          }
+
+          // Send to backend
+          const res = await fetch('http://localhost:5000/api/branch-subject-teachers/bulk', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(mappedAssignments),
+          });
+
+          const data = await res.json();
+
+          if (res.ok) {
+            toast.success(data.message || `Successfully created ${mappedAssignments.length} assignments`, {
+              position: "top-right",
+              autoClose: 3000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
+          } else {
+            toast.error(data.error || 'Failed to upload assignments', {
+              position: "top-right",
+              autoClose: 3000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          toast.error(err.message || 'Failed to upload assignments', {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+        } finally {
+          setIsUploading(false);
+          e.target.value = null; // Reset file input
         }
       };
 
       reader.onerror = () => {
-        toast.error('Failed to read the Excel file');
+        toast.error('Failed to read the Excel file', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
         setIsUploading(false);
+        e.target.value = null; // Reset file input
       };
 
       reader.readAsArrayBuffer(file);
     } catch (err) {
-      toast.error(err.message || 'An error occurred while uploading the assignments');
-    } finally {
+      console.error(err);
+      toast.error(err.message || 'An error occurred while uploading the assignments', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       setIsUploading(false);
       e.target.value = null; // Reset file input
     }
@@ -282,6 +373,7 @@ const AssignTeacherToBranchSubject = () => {
           </div>
         </>
       )}
+      <ToastContainer />
     </div>
   );
 };
