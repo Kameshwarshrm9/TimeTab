@@ -1,6 +1,16 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
+// Utility function to shuffle an array (Fisher-Yates shuffle)
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 export const generateTimetable = async (req, res) => {
   try {
     await prisma.timetable.deleteMany(); // Clear old data
@@ -12,7 +22,8 @@ export const generateTimetable = async (req, res) => {
       "11:00 - 12:00",
       "12:00 - 01:00",
       "02:00 - 03:00",
-      "03:00 - 04:00"
+      "03:00 - 04:00",
+      "04:00 - 05:00"
     ];
 
     const branches = await prisma.branch.findMany({
@@ -40,10 +51,91 @@ export const generateTimetable = async (req, res) => {
         subjectDayTracker[day] = {};
       });
 
-      for (const bs of branch.subjects) {
+      // Phase 1: Schedule Labs First
+      const labSubjects = branch.subjects.filter(bs => bs.subject.isLab);
+      for (const bs of labSubjects) {
         const subject = bs.subject;
         const frequency = bs.frequency;
         const isLab = subject.isLab;
+
+        const assignment = branch.branchSubjectTeachers.find(x => x.subjectId === subject.id);
+        if (!assignment) continue;
+
+        const teacherId = assignment.teacherId;
+        let slotsAssigned = 0;
+
+        teacherMorningTracker[teacherId] = teacherMorningTracker[teacherId] || new Set();
+
+        if (!teacherSchedule[teacherId]) teacherSchedule[teacherId] = {};
+        weekdays.forEach(day => {
+          if (!teacherSchedule[teacherId][day]) teacherSchedule[teacherId][day] = {};
+        });
+
+        // Systematic slot selection for labs
+        let scheduled = false;
+        for (let session = 0; session < Math.floor(frequency / 2) && slotsAssigned < frequency; session++) {
+          scheduled = false;
+          // Shuffle weekdays for this session to randomize day selection
+          const shuffledDays = shuffleArray(weekdays);
+          // Define valid starting slot indices for labs (excluding "12:00 - 01:00")
+          const validSlotIndices = [0, 1, 4, 5]; // "09:00 - 11:00", "10:00 - 12:00", "14:00 - 16:00", "15:00 - 17:00"
+          const shuffledSlotIndices = shuffleArray(validSlotIndices);
+          
+          for (const day of shuffledDays) {
+            for (const slotIndex of shuffledSlotIndices) {
+              const slot = timeSlots[slotIndex];
+              const nextSlot = timeSlots[slotIndex + 1];
+              const isMorning = slotIndex === 0;
+
+              // Skip if lab can't be scheduled here (already handled by validSlotIndices, but keep for clarity)
+              if (slot === "12:00 - 01:00") continue; // Can't start lab before break
+
+              const teacherBusy = teacherSchedule[teacherId][day][slot];
+              const branchBusy = branchSchedule[day][slot];
+              const nextTeacherBusy = teacherSchedule[teacherId][day][nextSlot];
+              const nextBranchBusy = branchSchedule[day][nextSlot];
+
+              if (teacherBusy || branchBusy || nextTeacherBusy || nextBranchBusy) continue;
+
+              // Check morning constraints
+              if (isMorning) {
+                if (teacherMorningTracker[teacherId].has(day)) continue;
+                if (teacherMorningTracker[teacherId].size >= 3) continue;
+              }
+
+              // Assign LAB (2 hours)
+              timetable.push(
+                { branchId: branch.id, subjectId: subject.id, teacherId, day, timeSlot: slot },
+                { branchId: branch.id, subjectId: subject.id, teacherId, day, timeSlot: nextSlot }
+              );
+
+              branchSchedule[day][slot] = subject.id;
+              branchSchedule[day][nextSlot] = subject.id;
+
+              teacherSchedule[teacherId][day][slot] = true;
+              teacherSchedule[teacherId][day][nextSlot] = true;
+
+              subjectDayTracker[day][subject.id] = (subjectDayTracker[day][subject.id] || 0) + 2;
+
+              if (isMorning) teacherMorningTracker[teacherId].add(day);
+
+              slotsAssigned += 2;
+              scheduled = true;
+              break;
+            }
+            if (scheduled) break;
+          }
+          if (!scheduled && slotsAssigned < frequency) {
+            console.warn(`Could not schedule lab session for ${subject.name} (Branch: ${branch.name}, Sem: ${branch.semester}). Assigned ${slotsAssigned} of ${frequency} slots.`);
+          }
+        }
+      }
+
+      // Phase 2: Schedule Normal Subjects
+      const normalSubjects = branch.subjects.filter(bs => !bs.subject.isLab);
+      for (const bs of normalSubjects) {
+        const subject = bs.subject;
+        const frequency = bs.frequency;
 
         const assignment = branch.branchSubjectTeachers.find(x => x.subjectId === subject.id);
         if (!assignment) continue;
@@ -54,6 +146,11 @@ export const generateTimetable = async (req, res) => {
 
         teacherMorningTracker[teacherId] = teacherMorningTracker[teacherId] || new Set();
 
+        if (!teacherSchedule[teacherId]) teacherSchedule[teacherId] = {};
+        weekdays.forEach(day => {
+          if (!teacherSchedule[teacherId][day]) teacherSchedule[teacherId][day] = {};
+        });
+
         while (slotsAssigned < frequency && retryCount < frequency * 15) {
           retryCount++;
 
@@ -62,8 +159,11 @@ export const generateTimetable = async (req, res) => {
           const slot = timeSlots[slotIndex];
           const isMorning = slotIndex === 0;
 
-          const prevSlot = timeSlots[slotIndex - 1];
-          const nextSlot = timeSlots[slotIndex + 1];
+          // Skip scheduling during lunch break
+          if (slot === "12:00 - 01:00") continue;
+
+          const prevSlot = slotIndex > 0 ? timeSlots[slotIndex - 1] : null;
+          const nextSlot = slotIndex < timeSlots.length - 1 ? timeSlots[slotIndex + 1] : null;
 
           const teacherBusy = teacherSchedule[teacherId]?.[day]?.[slot];
           const branchBusy = branchSchedule[day][slot];
@@ -79,62 +179,31 @@ export const generateTimetable = async (req, res) => {
             if (teacherMorningTracker[teacherId].size >= 3) continue;
           }
 
-          if (!teacherSchedule[teacherId]) teacherSchedule[teacherId] = {};
-          if (!teacherSchedule[teacherId][day]) teacherSchedule[teacherId][day] = {};
+          const prevBusy = prevSlot ? teacherSchedule[teacherId][day]?.[prevSlot] : false;
+          const nextBusy = nextSlot ? teacherSchedule[teacherId][day]?.[nextSlot] : false;
 
-          // LAB LOGIC
-          if (isLab) {
-            // Prevent labs from starting at 12:00 - 01:00, as the next slot is after the break
-            if (slot === "12:00 - 01:00") continue;
-            if (!nextSlot) continue;
+          if (prevBusy || nextBusy) continue;
 
-            const nextTeacherBusy = teacherSchedule[teacherId][day]?.[nextSlot];
-            const nextBranchBusy = branchSchedule[day][nextSlot];
+          timetable.push({
+            branchId: branch.id,
+            subjectId: subject.id,
+            teacherId,
+            day,
+            timeSlot: slot
+          });
 
-            if (nextTeacherBusy || nextBranchBusy) continue;
+          branchSchedule[day][slot] = subject.id;
+          teacherSchedule[teacherId][day][slot] = true;
 
-            // Assign LAB (2 hours)
-            timetable.push(
-              { branchId: branch.id, subjectId: subject.id, teacherId, day, timeSlot: slot },
-              { branchId: branch.id, subjectId: subject.id, teacherId, day, timeSlot: nextSlot }
-            );
+          subjectDayTracker[day][subject.id] = (subjectDayTracker[day][subject.id] || 0) + 1;
 
-            branchSchedule[day][slot] = subject.id;
-            branchSchedule[day][nextSlot] = subject.id;
+          if (isMorning) teacherMorningTracker[teacherId].add(day);
 
-            teacherSchedule[teacherId][day][slot] = true;
-            teacherSchedule[teacherId][day][nextSlot] = true;
+          slotsAssigned++;
+        }
 
-            subjectDayTracker[day][subject.id] = (subjectDayTracker[day][subject.id] || 0) + 2;
-
-            if (isMorning) teacherMorningTracker[teacherId].add(day);
-
-            slotsAssigned += 2;
-          }
-          // NORMAL SUBJECT
-          else {
-            const prevBusy = prevSlot ? teacherSchedule[teacherId][day]?.[prevSlot] : false;
-            const nextBusy = nextSlot ? teacherSchedule[teacherId][day]?.[nextSlot] : false;
-
-            if (prevBusy || nextBusy) continue;
-
-            timetable.push({
-              branchId: branch.id,
-              subjectId: subject.id,
-              teacherId,
-              day,
-              timeSlot: slot
-            });
-
-            branchSchedule[day][slot] = subject.id;
-            teacherSchedule[teacherId][day][slot] = true;
-
-            subjectDayTracker[day][subject.id] = (subjectDayTracker[day][subject.id] || 0) + 1;
-
-            if (isMorning) teacherMorningTracker[teacherId].add(day);
-
-            slotsAssigned++;
-          }
+        if (slotsAssigned < frequency) {
+          console.warn(`Could not schedule all slots for ${subject.name} (Branch: ${branch.name}, Sem: ${branch.semester}). Assigned ${slotsAssigned} of ${frequency} slots.`);
         }
       }
     }
@@ -229,17 +298,27 @@ export const getTeacherTimetable = async (req, res) => {
       },
     });
 
+    // Sort timetable: Monday to Friday, then by timeSlot
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     timetable.sort((a, b) => {
-      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
       const dayDiff = dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
       if (dayDiff !== 0) return dayDiff;
       return a.timeSlot.localeCompare(b.timeSlot);
     });
 
+    // Format the response
+    const formattedTimetable = timetable.map(entry => ({
+      day: entry.day,
+      timeSlot: entry.timeSlot,
+      subject: entry.subject.name,
+      branch: entry.branch.name,
+      semester: entry.branch.semester,
+    }));
+
     res.json({
       teacherId: teacher.id,
       teacherName: teacher.name,
-      timetable,
+      timetable: formattedTimetable,
     });
   } catch (err) {
     console.error('Error fetching teacher timetable:', err.message, err.stack);

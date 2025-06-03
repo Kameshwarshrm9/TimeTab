@@ -6,39 +6,43 @@ import * as XLSX from 'xlsx';
 const AssignTeacherToBranchSubject = () => {
   const [branches, setBranches] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [teachers, setTeachers] = useState([]); // All teachers (for bulk upload)
+  const [filteredTeachers, setFilteredTeachers] = useState([]); // Teachers for the selected subject
   const [branchId, setBranchId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [teacherId, setTeacherId] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
 
-  // Fetch all data
+  // Fetch branches, subjects, and all teachers
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [branchesRes, subjectsRes, teachersRes] = await Promise.all([
-          fetch('http://localhost:5000/api/branches'),
-          fetch('http://localhost:5000/api/subjects/getsub'),
-          fetch('http://localhost:5000/api/teachers'),
+          fetch('http://localhost:5000/api/branches').then(async (res) => {
+            if (!res.ok) throw new Error(`Failed to fetch branches: ${res.status} ${await res.text()}`);
+            return res.json();
+          }),
+          fetch('http://localhost:5000/api/subjects/getsub').then(async (res) => {
+            if (!res.ok) throw new Error(`Failed to fetch subjects: ${res.status} ${await res.text()}`);
+            return res.json();
+          }),
+          fetch('http://localhost:5000/api/teachers').then(async (res) => {
+            if (!res.ok) throw new Error(`Failed to fetch teachers: ${res.status} ${await res.text()}`);
+            return res.json();
+          }),
         ]);
 
-        if (!branchesRes.ok) throw new Error('Failed to fetch branches');
-        if (!subjectsRes.ok) throw new Error('Failed to fetch subjects');
-        if (!teachersRes.ok) throw new Error('Failed to fetch teachers');
-
-        const branchesData = await branchesRes.json();
-        const subjectsData = await subjectsRes.json();
-        const teachersData = await teachersRes.json();
-
-        setBranches(branchesData);
-        setSubjects(subjectsData);
-        setTeachers(teachersData);
+        setBranches(branchesRes);
+        setSubjects(subjectsRes);
+        setTeachers(teachersRes); // Store all teachers for bulk upload
         setLoading(false);
+        setFetchError(null);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error(error.message || 'Failed to fetch data', {
+        console.error('Error fetching initial data:', error);
+        toast.error(error.message || 'Failed to fetch initial data', {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -46,12 +50,52 @@ const AssignTeacherToBranchSubject = () => {
           pauseOnHover: true,
           draggable: true,
         });
+        setFetchError(error.message || 'Failed to fetch initial data');
         setLoading(false);
       }
     };
 
     fetchData();
   }, []);
+
+  // Fetch teachers for the selected subject
+  useEffect(() => {
+    const fetchTeachersForSubject = async () => {
+      if (!subjectId || isNaN(parseInt(subjectId))) {
+        console.log('No valid subjectId selected:', subjectId);
+        setFilteredTeachers([]);
+        setTeacherId('');
+        return;
+      }
+
+      try {
+        console.log('Fetching teachers for subjectId:', subjectId);
+        const res = await fetch(`http://localhost:5000/api/teacher-subjects/teachers/${subjectId}`);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to fetch teachers for subject ${subjectId}: ${res.status} ${errorText}`);
+        }
+        const teachersData = await res.json();
+        console.log('Teachers fetched for subject:', teachersData);
+        setFilteredTeachers(teachersData);
+        setTeacherId(''); // Reset teacher selection when subject changes
+      } catch (error) {
+        console.error('Error fetching teachers for subject:', error);
+        toast.error(error.message || 'Failed to fetch teachers for subject', {
+          position: "top-right",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        setFilteredTeachers([]);
+        setTeacherId('');
+      }
+    };
+
+    fetchTeachersForSubject();
+  }, [subjectId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -100,6 +144,8 @@ const AssignTeacherToBranchSubject = () => {
         }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         toast.success('Teacher successfully assigned!', {
           position: "top-right",
@@ -113,8 +159,7 @@ const AssignTeacherToBranchSubject = () => {
         setSubjectId('');
         setTeacherId('');
       } else {
-        const errorData = await res.json();
-        toast.error(errorData.error || 'Assignment failed', {
+        toast.error(data.error || 'Assignment failed', {
           position: "top-right",
           autoClose: 3000,
           hideProgressBar: false,
@@ -243,7 +288,7 @@ const AssignTeacherToBranchSubject = () => {
             closeOnClick: true,
             pauseOnHover: true,
             draggable: true,
-          });
+            });
         } finally {
           setIsUploading(false);
           e.target.value = null; // Reset file input
@@ -284,6 +329,8 @@ const AssignTeacherToBranchSubject = () => {
       <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">Assign Teacher to Branch-Subject</h2>
       {loading ? (
         <div className="text-center text-gray-500">Loading data...</div>
+      ) : fetchError ? (
+        <div className="text-center text-red-500">{fetchError}</div>
       ) : (
         <>
           {/* Manual Assignment Form */}
@@ -294,14 +341,22 @@ const AssignTeacherToBranchSubject = () => {
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400"
+                disabled={branches.length === 0}
               >
                 <option value="">-- Select Branch --</option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name} - Sem {branch.semester}
-                  </option>
-                ))}
+                {branches.length === 0 ? (
+                  <option disabled>No branches available</option>
+                ) : (
+                  branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name} - Sem {branch.semester}
+                    </option>
+                  ))
+                )}
               </select>
+              {branches.length === 0 && (
+                <p className="mt-1 text-sm text-red-500">No branches available to select.</p>
+              )}
             </div>
 
             <div>
@@ -310,14 +365,22 @@ const AssignTeacherToBranchSubject = () => {
                 value={subjectId}
                 onChange={(e) => setSubjectId(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400"
+                disabled={subjects.length === 0}
               >
                 <option value="">-- Select Subject --</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
+                {subjects.length === 0 ? (
+                  <option disabled>No subjects available</option>
+                ) : (
+                  subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))
+                )}
               </select>
+              {subjects.length === 0 && (
+                <p className="mt-1 text-sm text-red-500">No subjects available to select.</p>
+              )}
             </div>
 
             <div>
@@ -326,21 +389,30 @@ const AssignTeacherToBranchSubject = () => {
                 value={teacherId}
                 onChange={(e) => setTeacherId(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-400"
+                disabled={!subjectId || subjects.length === 0}
               >
                 <option value="">-- Select Teacher --</option>
-                {teachers.map((teacher) => (
+                {filteredTeachers.map((teacher) => (
                   <option key={teacher.id} value={teacher.id}>
                     {teacher.name}
                   </option>
                 ))}
               </select>
+              {!subjectId && (
+                <p className="mt-1 text-sm text-gray-500">Please select a subject to see available teachers.</p>
+              )}
+              {subjectId && filteredTeachers.length === 0 && (
+                <p className="mt-1 text-sm text-red-500">No teachers are assigned to this subject.</p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !subjectId || filteredTeachers.length === 0 || subjects.length === 0}
               className={`w-full py-2 text-white font-semibold rounded-lg transition-colors ${
-                submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                submitting || !subjectId || filteredTeachers.length === 0 || subjects.length === 0
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
               {submitting ? 'Assigning...' : 'Assign Teacher'}
@@ -355,7 +427,7 @@ const AssignTeacherToBranchSubject = () => {
                 type="file"
                 accept=".xlsx, .xls"
                 onChange={handleFileUpload}
-                disabled={isUploading}
+                disabled={isUploading || teachers.length === 0 || branches.length === 0 || subjects.length === 0}
                 className="block w-full p-3 border border-gray-300 rounded-md text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
               />
               {isUploading && (
@@ -370,6 +442,11 @@ const AssignTeacherToBranchSubject = () => {
             <p className="mt-2 text-sm text-gray-500">
               Excel file should have columns: branchName, semester, teacherName, subjectName
             </p>
+            {(teachers.length === 0 || branches.length === 0 || subjects.length === 0) && (
+              <p className="mt-1 text-sm text-red-500">
+                Cannot upload Excel file because some required data (branches, subjects, or teachers) is not available.
+              </p>
+            )}
           </div>
         </>
       )}

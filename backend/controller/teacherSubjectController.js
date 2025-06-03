@@ -140,6 +140,35 @@ export const getSubjectsOfTeacher = async (req, res) => {
   }
 };
 
+// NEW: Get all teachers assigned to a subject
+export const getTeachersBySubject = async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+
+    if (!subjectId) {
+      return res.status(400).json({ error: 'subjectId is required' });
+    }
+
+    const teachers = await prisma.teacherSubject.findMany({
+      where: { subjectId: Number(subjectId) },
+      include: {
+        teacher: true,
+      },
+    });
+
+    // Map to return only teacher details
+    const teacherList = teachers.map((ts) => ({
+      id: ts.teacher.id,
+      name: ts.teacher.name,
+    }));
+
+    res.status(200).json(teacherList);
+  } catch (error) {
+    console.error("Error fetching teachers for subject:", error);
+    res.status(500).json({ error: "Failed to fetch teachers for subject" });
+  }
+};
+
 // DELETE: Remove a teacher-subject assignment
 export const deleteTeacherSubject = async (req, res) => {
   const { teacherId, subjectId } = req.params;
