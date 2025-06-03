@@ -11,17 +11,64 @@ export const assignTeacherToBranchSubject = async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
+    // Validate that the teacher is assigned to the subject in TeacherSubject
+    const teacherSubjectExists = await prisma.teacherSubject.findFirst({
+      where: {
+        teacherId: Number(teacherId),
+        subjectId: Number(subjectId),
+      },
+    });
+
+    if (!teacherSubjectExists) {
+      return res.status(400).json({ error: "Teacher is not assigned to this subject" });
+    }
+
+    // Check if the branch-subject pair exists in BranchSubject
+    const branchSubjectExists = await prisma.branchSubject.findFirst({
+      where: {
+        branchId: Number(branchId),
+        subjectId: Number(subjectId),
+      },
+    });
+
+    if (!branchSubjectExists) {
+      // Create the BranchSubject record if it doesn't exist
+      await prisma.branchSubject.create({
+        data: {
+          branchId: Number(branchId),
+          subjectId: Number(subjectId),
+          frequency: 3, // Default frequency
+        },
+      });
+    }
+
+    // Check if the assignment already exists
+    const existingAssignment = await prisma.branchSubjectTeacher.findFirst({
+      where: {
+        branchId: Number(branchId),
+        subjectId: Number(subjectId),
+        teacherId: Number(teacherId),
+      },
+    });
+
+    if (existingAssignment) {
+      return res.status(400).json({ error: "This branch-subject-teacher assignment already exists" });
+    }
+
     const assignment = await prisma.branchSubjectTeacher.create({
       data: {
-        branchId,
-        subjectId,
-        teacherId,
+        branchId: Number(branchId),
+        subjectId: Number(subjectId),
+        teacherId: Number(teacherId),
       },
     });
 
     res.status(201).json(assignment);
   } catch (error) {
     console.error("Error assigning teacher:", error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: "This branch-subject-teacher assignment violates unique constraints" });
+    }
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -47,25 +94,31 @@ export const bulkAssignTeachersToBranchSubjects = async (req, res) => {
       };
     });
 
-    // Check for existing TeacherSubject records and create them if they don't exist
-    const teacherSubjectPairs = [...new Set(validatedAssignments.map((a) => `${a.teacherId}-${a.subjectId}`))];
+    // Validate that each teacher is assigned to the corresponding subject
+    const teacherSubjectPairs = validatedAssignments.map((a, index) => ({
+      pair: `${a.teacherId}-${a.subjectId}`,
+      index,
+    }));
     const existingTeacherSubjects = await prisma.teacherSubject.findMany({
       where: {
-        OR: teacherSubjectPairs.map((pair) => {
-          const [teacherId, subjectId] = pair.split('-').map(Number);
-          return { teacherId, subjectId };
-        }),
+        OR: validatedAssignments.map((a) => ({
+          teacherId: a.teacherId,
+          subjectId: a.subjectId,
+        })),
       },
       select: { teacherId: true, subjectId: true },
     });
 
     const existingTSPairs = existingTeacherSubjects.map((ts) => `${ts.teacherId}-${ts.subjectId}`);
-    const newTeacherSubjects = teacherSubjectPairs
-      .filter((pair) => !existingTSPairs.includes(pair))
-      .map((pair) => {
-        const [teacherId, subjectId] = pair.split('-').map(Number);
-        return { teacherId, subjectId };
+    const invalidAssignments = teacherSubjectPairs
+      .filter((tsp) => !existingTSPairs.includes(tsp.pair))
+      .map((tsp) => tsp.index);
+
+    if (invalidAssignments.length > 0) {
+      return res.status(400).json({
+        error: `Invalid teacher-subject assignments at indices: ${invalidAssignments.join(', ')}. Teachers must be assigned to the subjects in TeacherSubject.`,
       });
+    }
 
     // Check for existing BranchSubject records and create them if they don't exist
     const branchSubjectPairs = [...new Set(validatedAssignments.map((a) => `${a.branchId}-${a.subjectId}`))];
@@ -111,13 +164,8 @@ export const bulkAssignTeachersToBranchSubjects = async (req, res) => {
       });
     }
 
-    // Create necessary TeacherSubject and BranchSubject records, then create BranchSubjectTeacher records
+    // Create necessary BranchSubject records, then create BranchSubjectTeacher records
     await prisma.$transaction([
-      ...newTeacherSubjects.map((ts) =>
-        prisma.teacherSubject.create({
-          data: ts,
-        })
-      ),
       ...newBranchSubjects.map((bs) =>
         prisma.branchSubject.create({
           data: bs,

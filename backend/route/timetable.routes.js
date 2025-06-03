@@ -4,7 +4,7 @@ import { generateTimetable, getTeacherSchedule, getTeacherTimetable, getTimetabl
 const router = express.Router();
 
 router.post('/generate', generateTimetable);
-// router.get('/:branchId', getTimetableByBranch);
+
 router.get('/:branch/:semester', getTimetableByBranchAndSem);
 
 router.get('/teacher-timetable/:teacherId', getTeacherTimetable);

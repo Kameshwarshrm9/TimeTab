@@ -106,9 +106,9 @@ const ViewTeacherTimetable = () => {
     '10:00 - 11:00',
     '11:00 - 12:00',
     '12:00 - 01:00',
-    '01:00 - 02:00',
     '02:00 - 03:00',
     '03:00 - 04:00',
+    '04:00 - 05:00',
   ];
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -116,14 +116,14 @@ const ViewTeacherTimetable = () => {
     day,
     slots: timeSlots.reduce((acc, slot) => ({
       ...acc,
-      [slot]: slot === '01:00 - 02:00' ? { subject: 'Break', branch: '', semester: '' } : null
+      [slot]: null // No explicit break slot in backend; handle break visually
     }), {}),
   }));
 
   if (timetable && timetable.timetable) {
     timetable.timetable.forEach((entry) => {
       const dayIndex = days.indexOf(entry.day);
-      if (dayIndex !== -1 && entry.timeSlot !== '01:00 - 02:00') {
+      if (dayIndex !== -1) {
         timetableGrid[dayIndex].slots[entry.timeSlot] = {
           subject: entry.subject,
           branch: entry.branch,
@@ -199,15 +199,15 @@ const ViewTeacherTimetable = () => {
                     <td key={slot} className="border border-gray-300 px-4 py-2 text-center">
                       {row.slots[slot] ? (
                         <div>
-                          <div className={`font-semibold ${slot === '01:00 - 02:00' ? 'text-blue-600' : ''}`}>
+                          <div className="font-semibold">
                             {row.slots[slot].subject}
                           </div>
-                          {slot !== '01:00 - 02:00' && (
-                            <div className="text-sm text-gray-600">
-                              {row.slots[slot].branch} (Sem {row.slots[slot].semester})
-                            </div>
-                          )}
+                          <div className="text-sm text-gray-600">
+                            {row.slots[slot].branch} (Sem {row.slots[slot].semester})
+                          </div>
                         </div>
+                      ) : slot === '12:00 - 01:00' ? (
+                        <div className="font-semibold text-blue-600">Lunch Break</div>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
