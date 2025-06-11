@@ -14,6 +14,7 @@ const ViewTimetable = () => {
     '10:00 - 11:00',
     '11:00 - 12:00',
     '12:00 - 01:00',
+    '01:00 - 02:00', // Break time updated to 1:00 - 2:00
     '02:00 - 03:00',
     '03:00 - 04:00',
     '04:00 - 05:00',
@@ -205,7 +206,7 @@ const ViewTimetable = () => {
                           </div>
                           <div className="text-sm text-gray-600">{row.slots[slot].teacher}</div>
                         </div>
-                      ) : slot === '12:00 - 01:00' ? (
+                      ) : slot === '01:00 - 02:00' ? ( // Updated break slot
                         <div className="font-semibold text-blue-600">Lunch Break</div>
                       ) : (
                         <span className="text-gray-400">-</span>

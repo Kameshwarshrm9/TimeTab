@@ -21,6 +21,7 @@ export const generateTimetable = async (req, res) => {
       "10:00 - 11:00",
       "11:00 - 12:00",
       "12:00 - 01:00",
+      "01:00 - 02:00", // Break time shifted to 1:00 - 2:00
       "02:00 - 03:00",
       "03:00 - 04:00",
       "04:00 - 05:00"
@@ -77,8 +78,8 @@ export const generateTimetable = async (req, res) => {
           scheduled = false;
           // Shuffle weekdays for this session to randomize day selection
           const shuffledDays = shuffleArray(weekdays);
-          // Define valid starting slot indices for labs (excluding "12:00 - 01:00")
-          const validSlotIndices = [0, 1, 4, 5]; // "09:00 - 11:00", "10:00 - 12:00", "14:00 - 16:00", "15:00 - 17:00"
+          // Define valid starting slot indices for labs (excluding "01:00 - 02:00")
+          const validSlotIndices = [0, 1, 2, 5, 6]; // "09:00 - 11:00", "10:00 - 12:00", "12:00 - 01:00", "14:00 - 16:00", "15:00 - 17:00"
           const shuffledSlotIndices = shuffleArray(validSlotIndices);
           
           for (const day of shuffledDays) {
@@ -88,7 +89,7 @@ export const generateTimetable = async (req, res) => {
               const isMorning = slotIndex === 0;
 
               // Skip if lab can't be scheduled here (already handled by validSlotIndices, but keep for clarity)
-              if (slot === "12:00 - 01:00") continue; // Can't start lab before break
+              if (slot === "01:00 - 02:00") continue; // Can't start lab before break
 
               const teacherBusy = teacherSchedule[teacherId][day][slot];
               const branchBusy = branchSchedule[day][slot];
@@ -160,7 +161,7 @@ export const generateTimetable = async (req, res) => {
           const isMorning = slotIndex === 0;
 
           // Skip scheduling during lunch break
-          if (slot === "12:00 - 01:00") continue;
+          if (slot === "01:00 - 02:00") continue; // Updated to new break time
 
           const prevSlot = slotIndex > 0 ? timeSlots[slotIndex - 1] : null;
           const nextSlot = slotIndex < timeSlots.length - 1 ? timeSlots[slotIndex + 1] : null;
